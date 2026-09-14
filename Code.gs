@@ -1,0 +1,204 @@
+/**
+ * Code.gs — Google Apps Script backend for the Event Data Story app.
+ *
+ * Architecture: Website (index/input/analytics.html) -> this Web App -> a
+ * Google Spreadsheet with two sheets, EVENTS and ITEMS.
+ *
+ * SETUP
+ * 1. Create (or open) a Google Spreadsheet and copy its ID from the URL:
+ *    https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit
+ * 2. Paste that ID into SPREADSHEET_ID below.
+ * 3. Extensions -> Apps Script, paste this whole file in as Code.gs.
+ * 4. Run `setup` once from the Apps Script editor to create the EVENTS and
+ *    ITEMS sheets with headers (or just call any endpoint once — both
+ *    doGet/doPost call ensureSheets_ automatically).
+ * 5. Deploy -> New deployment -> Web app.
+ *      - Execute as: Me
+ *      - Who has access: Anyone
+ *    Copy the resulting /exec URL into CONFIG.API_URL in js/data.js.
+ */
+
+const SPREADSHEET_ID = "PASTE_YOUR_SPREADSHEET_ID_HERE";
+
+const EVENTS_HEADERS = [
+  "event_id", "user", "event_name", "client", "event_price", "event_date",
+  "duration", "event_days", "gr", "city", "country", "submitted_at",
+];
+const ITEMS_HEADERS = [
+  "item_id", "event_id", "item_code", "item_name", "category", "vendor",
+  "quantity", "total_price",
+];
+
+function ss_() {
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
+function ensureSheets_() {
+  const ss = ss_();
+  let eventsSheet = ss.getSheetByName("EVENTS");
+  if (!eventsSheet) {
+    eventsSheet = ss.insertSheet("EVENTS");
+    eventsSheet.appendRow(EVENTS_HEADERS);
+  }
+  let itemsSheet = ss.getSheetByName("ITEMS");
+  if (!itemsSheet) {
+    itemsSheet = ss.insertSheet("ITEMS");
+    itemsSheet.appendRow(ITEMS_HEADERS);
+  }
+  return { eventsSheet, itemsSheet };
+}
+
+function setup() {
+  ensureSheets_();
+}
+
+function jsonResponse_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ---------------------------------------------------------------------- */
+/* GET — analytics read                                                    */
+/* ---------------------------------------------------------------------- */
+function doGet(e) {
+  const action = e && e.parameter ? e.parameter.action : null;
+  if (action === "getAnalytics") {
+    return jsonResponse_({ events: readAllEvents_() });
+  }
+  return jsonResponse_({ ok: true, message: "Event Data Story API is running. Use ?action=getAnalytics to read data." });
+}
+
+function readAllEvents_() {
+  const { eventsSheet, itemsSheet } = ensureSheets_();
+
+  const eventsValues = eventsSheet.getDataRange().getValues();
+  const eventsHeader = eventsValues.shift() || [];
+  const events = eventsValues
+    .filter((row) => row[0]) // skip blank trailing rows
+    .map((row) => {
+      const rec = {};
+      eventsHeader.forEach((h, i) => (rec[h] = row[i]));
+      return {
+        eventId: String(rec.event_id),
+        user: rec.user,
+        event: rec.event_name,
+        client: rec.client,
+        eventPrice: Number(rec.event_price) || 0,
+        eventDate: formatDateOnly_(rec.event_date),
+        duration: Number(rec.duration) || 0,
+        eventDays: Number(rec.event_days) || 0,
+        gr: Number(rec.gr) || 0,
+        city: rec.city,
+        country: rec.country,
+        submittedAt: rec.submitted_at instanceof Date ? rec.submitted_at.toISOString() : String(rec.submitted_at),
+        items: [],
+      };
+    });
+
+  const byId = new Map(events.map((ev) => [ev.eventId, ev]));
+
+  const itemsValues = itemsSheet.getDataRange().getValues();
+  const itemsHeader = itemsValues.shift() || [];
+  itemsValues
+    .filter((row) => row[0])
+    .forEach((row) => {
+      const rec = {};
+      itemsHeader.forEach((h, i) => (rec[h] = row[i]));
+      const ev = byId.get(String(rec.event_id));
+      if (!ev) return;
+      ev.items.push({
+        itemCode: rec.item_code,
+        itemName: rec.item_name,
+        category: rec.category,
+        vendor: rec.vendor,
+        quantity: Number(rec.quantity) || 0,
+        totalPrice: Number(rec.total_price) || 0,
+      });
+    });
+
+  return events;
+}
+
+function formatDateOnly_(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  return String(value);
+}
+
+/* ---------------------------------------------------------------------- */
+/* POST — submit a report                                                  */
+/* ---------------------------------------------------------------------- */
+function doPost(e) {
+  let payload;
+  try {
+    payload = JSON.parse(e.postData.contents);
+  } catch (err) {
+    return jsonResponse_({ ok: false, error: "Invalid JSON body." });
+  }
+
+  const validationError = validateReport_(payload);
+  if (validationError) {
+    return jsonResponse_({ ok: false, error: validationError });
+  }
+
+  const { eventsSheet, itemsSheet } = ensureSheets_();
+
+  // Duplicate-submission guard: same event_id already stored.
+  const existingIds = eventsSheet.getRange(2, 1, Math.max(0, eventsSheet.getLastRow() - 1), 1).getValues().flat();
+  if (existingIds.indexOf(payload.eventId) !== -1) {
+    return jsonResponse_({ ok: true, eventId: payload.eventId, note: "Duplicate submission ignored." });
+  }
+
+  eventsSheet.appendRow([
+    payload.eventId,
+    payload.user,
+    payload.event,
+    payload.client,
+    payload.eventPrice,
+    payload.eventDate,
+    payload.duration,
+    payload.eventDays,
+    payload.gr,
+    payload.city,
+    payload.country,
+    payload.submittedAt || new Date().toISOString(),
+  ]);
+
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  items.forEach((item, i) => {
+    itemsSheet.appendRow([
+      payload.eventId + "-item-" + (i + 1),
+      payload.eventId,
+      item.itemCode,
+      item.itemName,
+      item.category,
+      item.vendor,
+      Number(item.quantity) || 0,
+      Number(item.totalPrice) || 0,
+    ]);
+  });
+
+  return jsonResponse_({ ok: true, eventId: payload.eventId });
+}
+
+// Backend validation, independent of whatever the frontend already checked
+// (per spec: never trust the frontend alone).
+function validateReport_(p) {
+  if (!p) return "Empty payload.";
+  const requiredStrings = ["eventId", "user", "event", "client", "eventDate", "city", "country"];
+  for (const key of requiredStrings) {
+    if (!p[key] || typeof p[key] !== "string" || !p[key].trim()) return "Missing or invalid field: " + key;
+  }
+  if (isNaN(new Date(p.eventDate).getTime())) return "Invalid eventDate.";
+  if (typeof p.eventPrice !== "number" || p.eventPrice < 0) return "Invalid eventPrice.";
+  if (typeof p.duration !== "number" || p.duration < 0) return "duration must not be negative.";
+  if (!Number.isInteger(p.eventDays) || p.eventDays < 1) return "eventDays must be an integer >= 1.";
+  if (!Number.isInteger(p.gr) || p.gr < 0) return "gr must be an integer >= 0.";
+  if (p.items && !Array.isArray(p.items)) return "items must be an array.";
+  for (const item of p.items || []) {
+    if (!item.itemCode || !item.itemName || !item.category || !item.vendor) return "Every item needs itemCode, itemName, category, and vendor.";
+    if (typeof item.quantity !== "number" || item.quantity <= 0) return "Every item's quantity must be a positive number.";
+    if (typeof item.totalPrice !== "number" || item.totalPrice < 0) return "Every item's totalPrice must be a non-negative number.";
+  }
+  return null;
+}

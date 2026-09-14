@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Event Data Story — EO Report &amp; Analytics</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topnav">
+    <div class="brand">event<span>data</span>story</div>
+    <nav aria-label="Navigasi utama">
+      <a href="input.html">Input Report</a>
+      <a href="analytics.html">Analytics</a>
+    </nav>
+  </header>
+
+  <main class="landing-hero">
+    <p class="kicker">Pencatatan laporan event &amp; analisis data untuk Event Organizer</p>
+    <h1>Setiap event menyimpan cerita. <em>Kami membantu Anda membacanya.</em></h1>
+    <div class="landing-actions">
+      <a class="btn btn-primary" href="input.html">Isi laporan event →</a>
+      <a class="btn btn-secondary" href="analytics.html">Lihat analytics</a>
+    </div>
+
+    <div class="landing-glance" id="glance-strip" aria-live="polite">
+      <div class="glance-item"><div class="num" id="glance-events">–</div><div class="label">Event tercatat</div></div>
+      <div class="glance-item"><div class="num" id="glance-vendors">–</div><div class="label">Vendor aktif</div></div>
+      <div class="glance-item"><div class="num" id="glance-items">–</div><div class="label">Jenis barang</div></div>
+    </div>
+  </main>
+
+  <script src="js/data.js"></script>
+  <script>
+    (async function () {
+      try {
+        const events = await loadAllEvents();
+        const vendors = new Set();
+        const items = new Set();
+        events.forEach((e) => e.items.forEach((i) => {
+          if (i.vendor) vendors.add(canonicalKey(i.vendor));
+          if (i.itemName) items.add(canonicalKey(i.itemName));
+        }));
+        document.getElementById("glance-events").textContent = events.length;
+        document.getElementById("glance-vendors").textContent = vendors.size;
+        document.getElementById("glance-items").textContent = items.size;
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  </script>
+</body>
+</html>

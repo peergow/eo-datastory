@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Analytics — What Does The Event Data Tell Us?</title>
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/analytics.css" />
+</head>
+<body>
+  <header class="topnav">
+    <div class="brand">event<span>data</span>story</div>
+    <nav aria-label="Navigasi utama">
+      <a href="input.html">Input Report</a>
+      <a href="analytics.html" class="active">Analytics</a>
+    </nav>
+  </header>
+
+  <nav class="progress-rail" id="progress-rail" aria-label="Navigasi antar section analytics" hidden>
+    <button data-target="section-price"><span class="dot"></span><span class="rail-label">01 EVENTS</span></button>
+    <button data-target="section-vendor-freq"><span class="dot"></span><span class="rail-label">02 VENDORS</span></button>
+    <button data-target="section-vendor-spend"><span class="dot"></span><span class="rail-label">03 SPENDING</span></button>
+    <button data-target="section-items"><span class="dot"></span><span class="rail-label">04 ITEMS</span></button>
+    <button data-target="section-item-vendor"><span class="dot"></span><span class="rail-label">05 ITEM × VENDOR</span></button>
+    <button data-target="section-time"><span class="dot"></span><span class="rail-label">06 TIME</span></button>
+    <button data-target="section-trend"><span class="dot"></span><span class="rail-label">07 TREND</span></button>
+  </nav>
+
+  <main class="story" id="story-root">
+
+    <div id="loading-state" class="empty-state"><p>Memuat data event…</p></div>
+
+    <div id="empty-state" class="empty-state" hidden>
+      <h2>NOT ENOUGH DATA YET.</h2>
+      <p>Submit a few event reports to unlock the analysis.</p>
+      <a class="btn btn-primary" href="input.html">Isi laporan pertama →</a>
+    </div>
+
+    <div id="story-content" hidden>
+      <section class="story-hero">
+        <h1>WHAT DOES THE EVENT DATA TELL US?</h1>
+        <p class="subtitle">An interactive view of event spending, vendors, items, and time.</p>
+        <div class="last-updated">
+          <span class="label">LAST UPDATED</span>
+          <span class="value" id="last-updated-value">–</span>
+        </div>
+        <div class="glance-strip">
+          <div><div class="num" id="hero-count-events">0</div><div class="label">EVENTS</div></div>
+          <div><div class="num" id="hero-count-spending">Rp 0</div><div class="label">TOTAL SPENDING</div></div>
+          <div><div class="num" id="hero-count-vendors">0</div><div class="label">VENDORS</div></div>
+        </div>
+      </section>
+
+      <section class="story-section" id="section-price" data-rail="section-price">
+        <div class="section-text">
+          <div class="section-kicker" style="color:var(--c-price)">01 · EVENT PRICE DISTRIBUTION</div>
+          <h2 id="price-headline">THERE ARE <span data-count>0</span> EVENTS.</h2>
+          <p class="section-body">Setiap titik di bawah ini adalah satu event. Posisinya menunjukkan total harga event tersebut — arahkan kursor ke sebuah titik untuk melihat detailnya.</p>
+        </div>
+        <div class="stat-strip" id="price-stats"></div>
+        <div class="chart-wrap"><div id="chart-price"></div></div>
+        <p class="chart-caption">Kotak menandai rentang Q1–Q3 dengan garis tengah median. Kuartil dihitung dengan metode interpolasi linear (persentil inklusif).</p>
+      </section>
+
+      <section class="story-section" id="section-vendor-freq" data-rail="section-vendor-freq">
+        <div class="section-text">
+          <div class="section-kicker" style="color:var(--c-vendor-freq)">02 · VENDOR FREQUENCY</div>
+          <h2>BUT WHERE DOES THE MONEY GO?</h2>
+          <p class="section-body">Vendor mana yang paling sering dipakai lintas seluruh event, diurutkan dari yang paling sering ke paling jarang.</p>
+        </div>
+        <div class="chart-wrap"><div id="chart-vendor-freq"></div></div>
+      </section>
+
+      <section class="story-section" id="section-vendor-spend" data-rail="section-vendor-spend">
+        <div class="section-text">
+          <div class="section-kicker" style="color:var(--c-vendor-spend)">03 · SPENDING BY VENDOR</div>
+          <h2 id="spend-insight">Frekuensi tinggi tidak selalu berarti pengeluaran terbesar.</h2>
+          <p class="section-body">Urutan berdasarkan total uang yang dikeluarkan ke masing-masing vendor — bisa berbeda urutannya dari frekuensi pemakaian di atas.</p>
+        </div>
+        <div class="chart-wrap"><div id="chart-vendor-spend"></div></div>
+      </section>
+
+      <section class="story-section" id="section-items" data-rail="section-items">
+        <div class="section-text">
+          <div class="section-kicker" style="color:var(--c-item)">04 · MOST RENTED ITEMS</div>
+          <h2>AND WHICH ITEMS KEEP RETURNING?</h2>
+          <p class="section-body">Barang yang paling sering muncul di seluruh laporan event, lengkap dengan total pcs dan total pengeluaran untuk masing-masing.</p>
+        </div>
+        <div class="chart-wrap"><div id="chart-items"></div></div>
+      </section>
+
+      <section class="story-section" id="section-item-vendor" data-rail="section-item-vendor">
+        <div class="section-text">
+          <div class="section-kicker" style="color:var(--c-itemvendor)">05 · ITEM × VENDOR</div>
+          <h2>Kombinasi mana yang paling sering dipasangkan?</h2>
+          <p class="section-body">Ukuran lingkaran menunjukkan seberapa sering kombinasi barang dan vendor tersebut muncul bersama. Arahkan kursor untuk melihat total pcs dan total spending.</p>
+        </div>
+        <div class="chart-wrap"><div id="chart-item-vendor"></div></div>
+      </section>
+
+      <section class="story-section" id="section-time" data-rail="section-time">
+        <div class="section-text">
+          <div class="section-kicker" style="color:var(--c-vendor-freq)">06 · PEAK EVENT TIME</div>
+          <h2>WHEN DOES EVERYTHING PEAK?</h2>
+          <p class="section-body">Dua sudut pandang: minggu mana dan bulan mana dalam data yang paling banyak menyelenggarakan event.</p>
+          <p class="section-insight" id="peak-insight"></p>
+        </div>
+        <div class="two-col">
+          <div>
+            <div class="chart-caption" style="margin-bottom:8px;font-weight:600">Peak Week</div>
+            <div class="chart-wrap"><div id="chart-week"></div></div>
+          </div>
+          <div>
+            <div class="chart-caption" style="margin-bottom:8px;font-weight:600">Peak Month</div>
+            <div class="chart-wrap"><div id="chart-month"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="story-section" id="section-trend" data-rail="section-trend">
+        <div class="section-text">
+          <div class="section-kicker" style="color:var(--c-time)">07 · SPENDING OVER TIME</div>
+          <h2>Uang dan jumlah event tidak selalu bergerak searah.</h2>
+          <p class="section-body">Garis solid mengikuti total spending per bulan, garis putus-putus mengikuti jumlah event. Arahkan kursor di sepanjang grafik untuk melihat rincian tiap bulan.</p>
+        </div>
+        <div class="chart-wrap"><div id="chart-timeline"></div></div>
+      </section>
+
+      <footer class="story-footer">
+        Data diproses langsung dari laporan yang masuk — tidak ada angka yang di-hardcode. Sumber: Google Sheets via Google Apps Script (atau data contoh + localStorage saat berjalan lokal).
+      </footer>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/analytics.js"></script>
+</body>
+</html>

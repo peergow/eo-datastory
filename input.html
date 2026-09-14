@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Input Laporan Event — Event Data Story</title>
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/input.css" />
+</head>
+<body>
+  <header class="topnav">
+    <div class="brand">event<span>data</span>story</div>
+    <nav aria-label="Navigasi utama">
+      <a href="input.html" class="active">Input Report</a>
+      <a href="analytics.html">Analytics</a>
+    </nav>
+  </header>
+
+  <main class="input-page">
+    <div class="page-heading">
+      <div class="eyebrow">LAPORAN EVENT</div>
+      <h1>Catat detail event Anda</h1>
+      <p>Lengkapi informasi event, lokasi, dan barang yang disewa. Timestamp pengisian dicatat otomatis — Anda tidak perlu mengisinya.</p>
+    </div>
+
+    <form id="report-form" novalidate>
+      <fieldset class="form-section">
+        <legend>Event Information</legend>
+        <div class="field-grid">
+          <div class="field" data-field="user">
+            <label for="f-user">Nama user / pengisi laporan</label>
+            <input id="f-user" name="user" type="text" autocomplete="name" required />
+            <div class="error-msg" role="alert"></div>
+          </div>
+          <div class="field" data-field="event">
+            <label for="f-event">Nama event</label>
+            <input id="f-event" name="event" type="text" required />
+            <div class="error-msg" role="alert"></div>
+          </div>
+          <div class="field" data-field="client">
+            <label for="f-client">Nama perusahaan / client</label>
+            <input id="f-client" name="client" type="text" required />
+            <div class="error-msg" role="alert"></div>
+          </div>
+          <div class="field" data-field="eventPrice">
+            <label for="f-price">Total harga event (Rp)</label>
+            <input id="f-price" name="eventPrice" type="text" inputmode="numeric" placeholder="cth. 25.000.000" required />
+            <span class="hint">Terisi otomatis dari jumlah barang, dapat disesuaikan.</span>
+            <div class="error-msg" role="alert"></div>
+          </div>
+          <div class="field" data-field="eventDate">
+            <label for="f-date">Tanggal event</label>
+            <input id="f-date" name="eventDate" type="date" required />
+            <div class="error-msg" role="alert"></div>
+          </div>
+          <div class="field" data-field="duration">
+            <label for="f-duration">Durasi event (jam)</label>
+            <input id="f-duration" name="duration" type="number" min="0" step="0.5" required />
+            <div class="error-msg" role="alert"></div>
+          </div>
+          <div class="field" data-field="eventDays">
+            <label for="f-days">Jumlah day event</label>
+            <input id="f-days" name="eventDays" type="number" min="1" step="1" required />
+            <div class="error-msg" role="alert"></div>
+          </div>
+          <div class="field" data-field="gr">
+            <label for="f-gr">Jumlah GR (General Rehearsal)</label>
+            <input id="f-gr" name="gr" type="number" min="0" step="1" required />
+            <div class="error-msg" role="alert"></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend>Location</legend>
+        <div class="field-grid">
+          <div class="field" data-field="city">
+            <label for="f-city">Kota</label>
+            <input id="f-city" name="city" type="text" required />
+            <div class="error-msg" role="alert"></div>
+          </div>
+          <div class="field" data-field="country">
+            <label for="f-country">Negara</label>
+            <input id="f-country" name="country" type="text" value="Indonesia" required />
+            <div class="error-msg" role="alert"></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="form-section">
+        <legend>Rental Items</legend>
+        <div class="items-header">
+          <div class="items-count">TOTAL ITEMS: <strong id="items-count">0</strong></div>
+        </div>
+        <div id="items-container"></div>
+        <p class="no-items-msg" id="no-items-msg">Belum ada barang ditambahkan.</p>
+        <button type="button" class="btn-add-item" id="add-item">+ Tambah Barang</button>
+      </fieldset>
+
+      <div class="submit-row">
+        <button type="submit" id="submit-report">Submit Report</button>
+        <span class="form-level-error" id="form-level-error" role="alert"></span>
+      </div>
+    </form>
+  </main>
+
+  <div class="success-toast" id="success-toast" role="status" aria-live="polite">
+    <div><span class="check">✓</span><strong>REPORT SAVED</strong></div>
+    <p>Your event has been added to the dataset.</p>
+  </div>
+
+  <template id="item-block-template">
+    <div class="item-block" data-item-block>
+      <div class="item-block-header">
+        <span class="item-block-title">BARANG #<span data-item-number>1</span></span>
+        <button type="button" class="btn-remove-item" data-remove-item>Hapus</button>
+      </div>
+      <div class="field-grid">
+        <div class="field" data-field="itemCode">
+          <label>Kode barang</label>
+          <input type="text" data-name="itemCode" required />
+          <div class="error-msg" role="alert"></div>
+        </div>
+        <div class="field" data-field="itemName">
+          <label>Nama barang</label>
+          <input type="text" data-name="itemName" required />
+          <div class="error-msg" role="alert"></div>
+        </div>
+        <div class="field" data-field="category">
+          <label>Kategori</label>
+          <select data-name="category" required>
+            <option value="">Pilih kategori</option>
+            <option>LED</option>
+            <option>Genset</option>
+            <option>Audio</option>
+            <option>Lighting</option>
+            <option>Documentation</option>
+            <option>Rigging</option>
+            <option>Effect</option>
+            <option>Internet</option>
+            <option>Multimedia</option>
+            <option>Lainnya</option>
+          </select>
+          <div class="error-msg" role="alert"></div>
+        </div>
+        <div class="field" data-field="vendor">
+          <label>Nama vendor</label>
+          <input type="text" data-name="vendor" required />
+          <div class="error-msg" role="alert"></div>
+        </div>
+        <div class="field" data-field="quantity">
+          <label>Jumlah / pcs</label>
+          <input type="number" min="1" step="1" data-name="quantity" required />
+          <div class="error-msg" role="alert"></div>
+        </div>
+        <div class="field" data-field="totalPrice">
+          <label>Harga total (Rp)</label>
+          <input type="text" inputmode="numeric" placeholder="cth. 5.000.000" data-name="totalPrice" required />
+          <div class="error-msg" role="alert"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="js/data.js"></script>
+  <script src="js/input.js"></script>
+</body>
+</html>

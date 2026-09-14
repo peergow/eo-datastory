@@ -1,0 +1,228 @@
+/* =========================================================================
+   input.css — the report form. Kept simple and legible: this page's job
+   is to be filled in quickly and correctly, not to be a visual moment.
+   ========================================================================= */
+
+.input-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px clamp(20px, 5vw, 0px) 120px;
+}
+
+.input-page .page-heading {
+  margin-bottom: 40px;
+}
+
+.input-page .page-heading .eyebrow {
+  color: var(--c-vendor-spend);
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.input-page .page-heading h1 {
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+}
+
+.input-page .page-heading p {
+  color: var(--muted);
+  margin-top: 10px;
+  max-width: 52ch;
+}
+
+fieldset.form-section {
+  border: none;
+  padding: 0;
+  margin: 0 0 40px;
+}
+
+fieldset.form-section legend {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  padding: 0 0 16px;
+  width: 100%;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px 20px;
+}
+
+.field-grid .span-2 { grid-column: 1 / -1; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.field .hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.field input,
+.field select {
+  font-family: var(--font-sans);
+  font-size: 0.98rem;
+  padding: 11px 13px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--c-itemvendor);
+  box-shadow: 0 0 0 3px rgba(35, 61, 99, 0.12);
+  outline: none;
+}
+
+.field.has-error input,
+.field.has-error select { border-color: var(--c-vendor-spend); }
+
+.field .error-msg {
+  font-size: 0.8rem;
+  color: var(--c-vendor-spend);
+  min-height: 1.1em;
+}
+
+/* Rental items ----------------------------------------------------------- */
+.items-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.items-count {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.items-count strong { color: var(--c-item); }
+
+.item-block {
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 16px;
+  background: var(--paper-raised);
+  position: relative;
+}
+
+.item-block .item-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.item-block .item-block-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--c-itemvendor);
+}
+
+.btn-remove-item {
+  background: none;
+  border: 1.5px solid var(--c-vendor-spend);
+  color: var(--c-vendor-spend);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.btn-remove-item:hover { background: var(--c-vendor-spend); color: #fff; }
+
+.btn-add-item {
+  background: none;
+  border: 2px dashed var(--muted);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 16px;
+  width: 100%;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.btn-add-item:hover { border-color: var(--c-item); background: rgba(201, 151, 31, 0.08); }
+
+.no-items-msg {
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 16px 0;
+  font-style: italic;
+}
+
+/* Submit ------------------------------------------------------------------ */
+.submit-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 8px;
+}
+
+#submit-report {
+  padding: 16px 34px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+#submit-report:hover { transform: translateY(-2px); background: var(--c-vendor-spend); }
+#submit-report:disabled { opacity: 0.5; cursor: progress; transform: none; }
+
+.form-level-error {
+  color: var(--c-vendor-spend);
+  font-size: 0.9rem;
+}
+
+/* Success toast ------------------------------------------------------------ */
+.success-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 20px 26px;
+  border-radius: var(--radius);
+  max-width: 320px;
+  transform: translateY(140%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 60;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+.success-toast.visible { transform: translateY(0); }
+.success-toast .check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--c-price);
+  margin-right: 10px;
+  font-size: 0.85rem;
+}
+.success-toast strong { font-family: var(--font-display); font-size: 1.05rem; }
+.success-toast p { margin: 6px 0 0; font-size: 0.85rem; opacity: 0.85; }
+
+@media (max-width: 640px) {
+  .field-grid { grid-template-columns: 1fr; }
+  .submit-row { flex-direction: column; align-items: stretch; }
+  #submit-report { width: 100%; }
+}
