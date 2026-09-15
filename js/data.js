@@ -15,7 +15,7 @@
 
 const CONFIG = {
   // Paste your deployed Google Apps Script Web App URL here to run against
-  // a real backend, e.g. "https://script.google.com/macros/s/AKfycb.../exec".
+  // a real backend, e.g. "https://script.google.com/macros/s/AKfycbyDJUY1mecPE2DRjAsfN8KgJN2sdIJbg05u4xy9qv80BBm0MGiCl_JNeaQxsmoHSCUs/exec".
   // Leave empty to run fully client-side against the bundled sample data +
   // localStorage, which is the default "run locally" mode described in
   // README.md.
