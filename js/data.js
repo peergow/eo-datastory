@@ -19,7 +19,7 @@ const CONFIG = {
   // Leave empty to run fully client-side against the bundled sample data +
   // localStorage, which is the default "run locally" mode described in
   // README.md.
-  API_URL: "https://script.google.com/macros/s/AKfycbwMqe0KTFh_v_SFbldNT2QidxUbWSKf3pj7gxGvG1Dx0mz5-EmxabupIxAch-MEhlyB/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbxBMDe7A-B5z-xmZLB70y1Tc3X2IZOapGV6st_yHmjXae8FSyd-t5QXj1vHBeml6NSG/exec",
   LOCAL_STORAGE_KEY: "eo_datastory_submissions_v1",
 };
 
