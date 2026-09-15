@@ -30,8 +30,8 @@
  */
 
 const SPREADSHEET_ID = "PASTE_YOUR_SPREADSHEET_ID_HERE";
-const EVENTS_SHEET_NAME = "sheets events";
-const ITEMS_SHEET_NAME = "sheets item";
+const EVENTS_SHEET_NAME = "EVENTS";
+const ITEMS_SHEET_NAME = "ITEMS";
 
 const EVENTS_HEADERS = [
   "event_id", "user", "event_name", "client", "event_price", "event_date",
