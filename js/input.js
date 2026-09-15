@@ -124,6 +124,42 @@
 
   addItemBtn.addEventListener("click", () => addItemBlock());
 
+  /* ---------------------------------------------------------------------
+     Event duration: derived from start/end date (GR is counted separately
+     via its own field) instead of a manual "jumlah day" or "durasi jam"
+     input. Recomputes whenever either date, or the GR count, changes.
+     --------------------------------------------------------------------- */
+  const dateStartInput = document.getElementById("f-date-start");
+  const dateEndInput = document.getElementById("f-date-end");
+  const daysDisplay = document.getElementById("f-days");
+  const grInputEl = document.getElementById("f-gr");
+  const totalDaysHint = document.getElementById("total-days-hint");
+
+  function computedEventDays() {
+    if (!dateStartInput.value || !dateEndInput.value) return null;
+    const start = new Date(dateStartInput.value);
+    const end = new Date(dateEndInput.value);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    const diffDays = Math.round((end - start) / 86400000) + 1; // inclusive of both ends
+    return diffDays >= 1 ? diffDays : null;
+  }
+
+  function recomputeEventDays() {
+    const days = computedEventDays();
+    daysDisplay.value = days === null ? "—" : `${days} hari`;
+
+    const gr = Number(grInputEl.value);
+    if (days !== null && grInputEl.value !== "" && Number.isInteger(gr) && gr >= 0) {
+      totalDaysHint.textContent = `Total termasuk GR: ${days + gr} hari (${days} event + ${gr} GR).`;
+    } else {
+      totalDaysHint.textContent = "";
+    }
+  }
+
+  dateStartInput.addEventListener("change", recomputeEventDays);
+  dateEndInput.addEventListener("change", recomputeEventDays);
+  grInputEl.addEventListener("input", recomputeEventDays);
+
   // Suggest the event's total price as the sum of item totals, but never
   // override a value the user has typed themselves once items exist.
   let userEditedPrice = false;
@@ -160,28 +196,26 @@
     if (isNaN(price) || price <= 0) { setError(priceFieldEl, "Masukkan angka harga yang valid."); ok = false; }
     else setError(priceFieldEl, "");
 
-    const dateInput = document.getElementById("f-date");
-    const dateFieldEl = dateInput.closest(".field");
-    if (!dateInput.value || isNaN(new Date(dateInput.value).getTime())) { setError(dateFieldEl, "Tanggal tidak valid."); ok = false; }
-    else setError(dateFieldEl, "");
+    const dateStartFieldEl = dateStartInput.closest(".field");
+    const dateEndFieldEl = dateEndInput.closest(".field");
+    const startValid = dateStartInput.value && !isNaN(new Date(dateStartInput.value).getTime());
+    const endValid = dateEndInput.value && !isNaN(new Date(dateEndInput.value).getTime());
 
-    const durationInput = document.getElementById("f-duration");
-    const durationFieldEl = durationInput.closest(".field");
-    const duration = Number(durationInput.value);
-    if (durationInput.value === "" || isNaN(duration) || duration < 0) { setError(durationFieldEl, "Durasi tidak boleh negatif."); ok = false; }
-    else setError(durationFieldEl, "");
+    if (!startValid) { setError(dateStartFieldEl, "Tanggal mulai tidak valid."); ok = false; }
+    else setError(dateStartFieldEl, "");
 
-    const daysInput = document.getElementById("f-days");
-    const daysFieldEl = daysInput.closest(".field");
-    const days = Number(daysInput.value);
-    if (!Number.isInteger(days) || days < 1) { setError(daysFieldEl, "Jumlah day minimal 1."); ok = false; }
-    else setError(daysFieldEl, "");
+    if (!endValid) { setError(dateEndFieldEl, "Tanggal selesai tidak valid."); ok = false; }
+    else if (startValid && new Date(dateEndInput.value) < new Date(dateStartInput.value)) {
+      setError(dateEndFieldEl, "Tanggal selesai tidak boleh sebelum tanggal mulai.");
+      ok = false;
+    } else setError(dateEndFieldEl, "");
 
-    const grInput = document.getElementById("f-gr");
-    const grFieldEl = grInput.closest(".field");
-    const gr = Number(grInput.value);
-    if (grInput.value === "" || !Number.isInteger(gr) || gr < 0) { setError(grFieldEl, "GR tidak boleh negatif."); ok = false; }
+    const grFieldEl = grInputEl.closest(".field");
+    const gr = Number(grInputEl.value);
+    if (grInputEl.value === "" || !Number.isInteger(gr) || gr < 0) { setError(grFieldEl, "GR tidak boleh negatif."); ok = false; }
     else setError(grFieldEl, "");
+
+    recomputeEventDays();
 
     return ok;
   }
@@ -251,10 +285,10 @@
       event: form.event.value.trim(),
       client: form.client.value.trim(),
       eventPrice: rupiahValue(priceField),
-      eventDate: form.eventDate.value,
-      duration: Number(form.duration.value),
-      eventDays: Number(form.eventDays.value),
-      gr: Number(form.gr.value),
+      eventDate: dateStartInput.value,
+      eventDateEnd: dateEndInput.value,
+      eventDays: computedEventDays(),
+      gr: Number(grInputEl.value),
       city: form.city.value.trim(),
       country: form.country.value.trim(),
       items,
@@ -287,6 +321,7 @@
     itemsContainer.innerHTML = "";
     userEditedPrice = false;
     renumberItems();
+    recomputeEventDays();
     form.querySelectorAll(".field").forEach((f) => setError(f, ""));
   }
 

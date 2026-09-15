@@ -33,7 +33,7 @@ const SPREADSHEET_ID = "PASTE_YOUR_SPREADSHEET_ID_HERE";
 
 const EVENTS_HEADERS = [
   "event_id", "user", "event_name", "client", "event_price", "event_date",
-  "duration", "event_days", "gr", "city", "country", "submitted_at",
+  "event_end_date", "event_days", "gr", "city", "country", "submitted_at",
 ];
 const ITEMS_HEADERS = [
   "item_id", "event_id", "item_code", "item_name", "category", "vendor",
@@ -153,7 +153,7 @@ function readAllEvents_() {
         client: rec.client,
         eventPrice: Number(rec.event_price) || 0,
         eventDate: formatDateOnly_(rec.event_date),
-        duration: Number(rec.duration) || 0,
+        eventDateEnd: formatDateOnly_(rec.event_end_date),
         eventDays: Number(rec.event_days) || 0,
         gr: Number(rec.gr) || 0,
         city: rec.city,
@@ -225,7 +225,7 @@ function doPost(e) {
     payload.client,
     payload.eventPrice,
     payload.eventDate,
-    payload.duration,
+    payload.eventDateEnd,
     payload.eventDays,
     payload.gr,
     payload.city,
@@ -254,13 +254,16 @@ function doPost(e) {
 // (per spec: never trust the frontend alone).
 function validateReport_(p) {
   if (!p) return "Empty payload.";
-  const requiredStrings = ["eventId", "user", "event", "client", "eventDate", "city", "country"];
+  const requiredStrings = ["eventId", "user", "event", "client", "eventDate", "eventDateEnd", "city", "country"];
   for (const key of requiredStrings) {
     if (!p[key] || typeof p[key] !== "string" || !p[key].trim()) return "Missing or invalid field: " + key;
   }
-  if (isNaN(new Date(p.eventDate).getTime())) return "Invalid eventDate.";
+  const start = new Date(p.eventDate);
+  const end = new Date(p.eventDateEnd);
+  if (isNaN(start.getTime())) return "Invalid eventDate.";
+  if (isNaN(end.getTime())) return "Invalid eventDateEnd.";
+  if (end < start) return "eventDateEnd must not be before eventDate.";
   if (typeof p.eventPrice !== "number" || p.eventPrice < 0) return "Invalid eventPrice.";
-  if (typeof p.duration !== "number" || p.duration < 0) return "duration must not be negative.";
   if (!Number.isInteger(p.eventDays) || p.eventDays < 1) return "eventDays must be an integer >= 1.";
   if (!Number.isInteger(p.gr) || p.gr < 0) return "gr must be an integer >= 0.";
   if (p.items && !Array.isArray(p.items)) return "items must be an array.";

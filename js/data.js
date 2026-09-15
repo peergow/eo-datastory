@@ -269,112 +269,112 @@ const VENDOR_DICTIONARY_BUNDLED = [
    something meaningful to show on first run.
    ------------------------------------------------------------------------- */
 const SAMPLE_EVENTS = [
-  mk("Nadia", "Wedding Reception - Aditya & Rani", "PT Anugerah Selaras", "2026-01-11", 1, 1, 0, "Bandung", "Indonesia", [
+  mk("Nadia", "Wedding Reception - Aditya & Rani", "PT Anugerah Selaras", "2026-01-11", 1, 0, "Bandung", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "Vendor A", 40, 32000000),
     it("SND-04", "Line Array Speaker", "Audio", "Vendor C", 8, 18500000),
     it("GEN-02", "Genset 50kVA", "Genset", "Vendor B", 1, 4200000),
   ]),
-  mk("Nadia", "Corporate Townhall Q1", "Bank Kartika", "2026-01-18", 1, 1, 1, "Jakarta", "Indonesia", [
+  mk("Nadia", "Corporate Townhall Q1", "Bank Kartika", "2026-01-18", 1, 1, "Jakarta", "Indonesia", [
     it("LED-02", "LED Panel P4", "LED", "Vendor A", 24, 15000000),
     it("MIC-01", "Mic Wireless Handheld", "Audio", "Vendor D", 6, 3600000),
     it("LGT-03", "Moving Head Beam", "Lighting", "Vendor B", 12, 9600000),
   ]),
-  mk("Rizky", "Product Launch - Skinlab", "Skinlab Cosmetics", "2026-02-02", 2, 2, 1, "Jakarta", "Indonesia", [
+  mk("Rizky", "Product Launch - Skinlab", "Skinlab Cosmetics", "2026-02-02", 2, 1, "Jakarta", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "Vendor A", 60, 48000000),
     it("LGT-03", "Moving Head Beam", "Lighting", "Vendor B", 20, 16000000),
     it("SND-04", "Line Array Speaker", "Audio", "Vendor C", 12, 27750000),
     it("RIG-01", "Truss Support 3m", "Rigging", "Vendor E", 16, 6400000),
   ]),
-  mk("Rizky", "Wedding Reception - Bagus & Sinta", "Keluarga Bagus", "2026-02-14", 1, 1, 0, "Bandung", "Indonesia", [
+  mk("Rizky", "Wedding Reception - Bagus & Sinta", "Keluarga Bagus", "2026-02-14", 1, 0, "Bandung", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "Vendor A", 32, 25600000),
     it("SND-02", "Speaker Portable Set", "Audio", "Vendor C", 4, 6000000),
   ]),
-  mk("Vina", "Music Festival Day 1", "Kolektif Bunyi", "2026-02-21", 3, 1, 2, "Bandung", "Indonesia", [
+  mk("Vina", "Music Festival Day 1", "Kolektif Bunyi", "2026-02-21", 1, 2, "Bandung", "Indonesia", [
     it("LED-02", "LED Panel P4", "LED", "Vendor A", 80, 50000000),
     it("LGT-01", "Moving Head Spot", "Lighting", "Vendor B", 30, 27000000),
     it("SND-04", "Line Array Speaker", "Audio", "Vendor C", 24, 55500000),
     it("GEN-01", "Genset 100kVA", "Genset", "Vendor B", 2, 12000000),
     it("RIG-02", "Truss Support 6m", "Rigging", "Vendor E", 20, 12000000),
   ]),
-  mk("Nadia", "Annual Gala Dinner", "PT Sumber Makmur", "2026-03-06", 1, 1, 1, "Jakarta", "Indonesia", [
+  mk("Nadia", "Annual Gala Dinner", "PT Sumber Makmur", "2026-03-06", 1, 1, "Jakarta", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "vendor a", 48, 38400000),
     it("MIC-01", "Mic Wireless Handheld", "Audio", "Vendor D", 8, 4800000),
     it("DOC-01", "Videography Crew", "Documentation", "Vendor F", 1, 8000000),
   ]),
-  mk("Rizky", "Church Youth Retreat", "GKI Youth", "2026-03-13", 3, 1, 1, "Lembang", "Indonesia", [
+  mk("Rizky", "Church Youth Retreat", "GKI Youth", "2026-03-13", 1, 1, "Lembang", "Indonesia", [
     it("SND-02", "Speaker Portable Set", "Audio", "Vendor C", 2, 3000000),
     it("MIC-01", "Mic Wireless Handheld", "Audio", "Vendor D", 3, 1800000),
     it("LGT-04", "Par Led Stage Light", "Lighting", "Vendor B", 12, 3600000),
   ]),
-  mk("Vina", "Wedding Reception - Farhan & Dinda", "Keluarga Farhan", "2026-03-21", 1, 1, 0, "Surabaya", "Indonesia", [
+  mk("Vina", "Wedding Reception - Farhan & Dinda", "Keluarga Farhan", "2026-03-21", 1, 0, "Surabaya", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "Vendor A", 36, 28800000),
     it("SND-04", "Line Array Speaker", "Audio", "Vendor C", 8, 18500000),
     it("GEN-02", "Genset 50kVA", "Genset", "Vendor B", 1, 4200000),
   ]),
-  mk("Nadia", "Product Launch - Aetherwear", "Aetherwear Studio", "2026-04-04", 2, 1, 1, "Jakarta", "Indonesia", [
+  mk("Nadia", "Product Launch - Aetherwear", "Aetherwear Studio", "2026-04-04", 1, 1, "Jakarta", "Indonesia", [
     it("LGT-01", "Moving Head Spot", "Lighting", "Vendor B", 16, 14400000),
     it("SND-02", "Speaker Portable Set", "Audio", "Vendor C", 6, 9000000),
     it("DOC-02", "Photography Crew", "Documentation", "Vendor F", 2, 6000000),
     it("MUL-01", "LED Video Wall Content", "Multimedia", "Vendor G", 1, 11000000),
   ]),
-  mk("Rizky", "Wedding Reception - Galih & Wulan", "Keluarga Galih", "2026-04-12", 1, 1, 0, "Bandung", "Indonesia", [
+  mk("Rizky", "Wedding Reception - Galih & Wulan", "Keluarga Galih", "2026-04-12", 1, 0, "Bandung", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "Vendor A", 32, 25600000),
     it("SND-04", "Line Array Speaker", "Audio", "Vendor C", 8, 18500000),
   ]),
-  mk("Vina", "Corporate Family Day", "PT Jaya Abadi", "2026-04-25", 1, 1, 0, "Bandung", "Indonesia", [
+  mk("Vina", "Corporate Family Day", "PT Jaya Abadi", "2026-04-25", 1, 0, "Bandung", "Indonesia", [
     it("SND-02", "Speaker Portable Set", "Audio", "Vendor C", 4, 6000000),
     it("MIC-01", "Mic Wireless Handheld", "Audio", "Vendor D", 4, 2400000),
     it("GEN-02", "Genset 50kVA", "Genset", "Vendor B", 1, 4200000),
   ]),
-  mk("Nadia", "Music Festival Day 2", "Kolektif Bunyi", "2026-05-02", 2, 1, 2, "Bandung", "Indonesia", [
+  mk("Nadia", "Music Festival Day 2", "Kolektif Bunyi", "2026-05-02", 1, 2, "Bandung", "Indonesia", [
     it("LED-02", "LED Panel P4", "LED", "Vendor A", 70, 43750000),
     it("LGT-01", "Moving Head Spot", "Lighting", "Vendor B", 24, 21600000),
     it("SND-04", "Line Array Speaker", "Audio", "Vendor C", 20, 46250000),
     it("RIG-02", "Truss Support 6m", "Rigging", "Vendor E", 16, 9600000),
   ]),
-  mk("Rizky", "Wedding Reception - Hasan & Nadira", "Keluarga Hasan", "2026-05-09", 1, 1, 0, "Jakarta", "Indonesia", [
+  mk("Rizky", "Wedding Reception - Hasan & Nadira", "Keluarga Hasan", "2026-05-09", 1, 0, "Jakarta", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "Vendor A", 40, 32000000),
     it("LGT-04", "Par Led Stage Light", "Lighting", "Vendor B", 16, 4800000),
     it("SND-02", "Speaker Portable Set", "Audio", "Vendor C", 4, 6000000),
   ]),
-  mk("Vina", "Ministry Leaders Gathering", "GARA Community", "2026-05-16", 2, 1, 1, "Bandung", "Indonesia", [
+  mk("Vina", "Ministry Leaders Gathering", "GARA Community", "2026-05-16", 1, 1, "Bandung", "Indonesia", [
     it("SND-02", "Speaker Portable Set", "Audio", "Vendor C", 3, 4500000),
     it("MIC-01", "Mic Wireless Handheld", "Audio", "Vendor D", 4, 2400000),
     it("DOC-02", "Photography Crew", "Documentation", "Vendor F", 1, 3000000),
   ]),
-  mk("Nadia", "Product Launch - Rasa Nusantara", "Rasa Nusantara F&B", "2026-06-06", 1, 1, 0, "Jakarta", "Indonesia", [
+  mk("Nadia", "Product Launch - Rasa Nusantara", "Rasa Nusantara F&B", "2026-06-06", 1, 0, "Jakarta", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "Vendor A", 28, 22400000),
     it("SND-02", "Speaker Portable Set", "Audio", "Vendor C", 4, 6000000),
     it("DOC-01", "Videography Crew", "Documentation", "Vendor F", 1, 8000000),
   ]),
-  mk("Rizky", "Wedding Reception - Irfan & Kayla", "Keluarga Irfan", "2026-06-20", 1, 1, 0, "Bandung", "Indonesia", [
+  mk("Rizky", "Wedding Reception - Irfan & Kayla", "Keluarga Irfan", "2026-06-20", 1, 0, "Bandung", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "Vendor A", 36, 28800000),
     it("SND-04", "Line Array Speaker", "Audio", "Vendor C", 8, 18500000),
     it("GEN-02", "Genset 50kVA", "Genset", "Vendor B", 1, 4200000),
   ]),
-  mk("Vina", "Corporate Annual Meeting", "PT Sumber Makmur", "2026-07-11", 1, 1, 0, "Jakarta", "Indonesia", [
+  mk("Vina", "Corporate Annual Meeting", "PT Sumber Makmur", "2026-07-11", 1, 0, "Jakarta", "Indonesia", [
     it("LED-02", "LED Panel P4", "LED", "Vendor A", 20, 12500000),
     it("MIC-01", "Mic Wireless Handheld", "Audio", "Vendor D", 6, 3600000),
   ]),
-  mk("Nadia", "Wedding Reception - Joko & Larasati", "Keluarga Joko", "2026-08-08", 1, 1, 0, "Surabaya", "Indonesia", [
+  mk("Nadia", "Wedding Reception - Joko & Larasati", "Keluarga Joko", "2026-08-08", 1, 0, "Surabaya", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "Vendor A", 32, 25600000),
     it("SND-04", "Line Array Speaker", "Audio", "Vendor C", 8, 18500000),
     it("GEN-02", "Genset 50kVA", "Genset", "Vendor B", 1, 4200000),
   ]),
-  mk("Rizky", "Youth Retreat NRG 2026", "GARA Community", "2026-08-07", 3, 1, 1, "Lembang", "Indonesia", [
+  mk("Rizky", "Youth Retreat NRG 2026", "GARA Community", "2026-08-07", 1, 1, "Lembang", "Indonesia", [
     it("SND-02", "Speaker Portable Set", "Audio", "Vendor C", 3, 4500000),
     it("MIC-01", "Mic Wireless Handheld", "Audio", "Vendor D", 4, 2400000),
     it("LGT-04", "Par Led Stage Light", "Lighting", "Vendor B", 10, 3000000),
     it("DOC-02", "Photography Crew", "Documentation", "Vendor F", 1, 3000000),
   ]),
-  mk("Vina", "Product Launch - Meridian Tech", "Meridian Technologies", "2026-09-03", 2, 1, 1, "Jakarta", "Indonesia", [
+  mk("Vina", "Product Launch - Meridian Tech", "Meridian Technologies", "2026-09-03", 1, 1, "Jakarta", "Indonesia", [
     it("LED-02", "LED Panel P4", "LED", "Vendor A", 90, 56250000),
     it("LGT-01", "Moving Head Spot", "Lighting", "Vendor B", 30, 27000000),
     it("SND-04", "Line Array Speaker", "Audio", "Vendor C", 16, 37000000),
     it("RIG-02", "Truss Support 6m", "Rigging", "Vendor E", 24, 14400000),
     it("MUL-01", "LED Video Wall Content", "Multimedia", "Vendor G", 1, 15000000),
   ]),
-  mk("Nadia", "Wedding Reception - Kevin & Marsha", "Keluarga Kevin", "2026-09-12", 1, 1, 0, "Bandung", "Indonesia", [
+  mk("Nadia", "Wedding Reception - Kevin & Marsha", "Keluarga Kevin", "2026-09-12", 1, 0, "Bandung", "Indonesia", [
     it("LED-01", "LED Panel P3", "LED", "Vendor A", 36, 28800000),
     it("SND-04", "Line Array Speaker", "Audio", "Vendor C", 8, 18500000),
     it("GEN-02", "Genset 50kVA", "Genset", "Vendor B", 1, 4200000),
@@ -385,15 +385,20 @@ function it(itemCode, itemName, category, vendor, quantity, totalPrice) {
   return { itemCode, itemName, category, vendor, quantity, totalPrice };
 }
 
-function mk(user, event, client, eventDate, duration, eventDays, gr, city, country, items) {
+function mk(user, event, client, eventDate, eventDays, gr, city, country, items) {
   const eventPrice = items.reduce((sum, i) => sum + i.totalPrice, 0);
+  // eventDateEnd is derived the same way a real submission derives it:
+  // start date + (eventDays - 1), since eventDays is inclusive of both ends.
+  const endDate = new Date(eventDate + "T00:00:00");
+  endDate.setDate(endDate.getDate() + (eventDays - 1));
+  const eventDateEnd = endDate.toISOString().slice(0, 10);
   // submittedAt is spread a few hours after the event date so "last updated"
   // has realistic variety in the sample data.
   const submittedAt = new Date(eventDate + "T09:00:00");
   submittedAt.setDate(submittedAt.getDate() + 1);
   return {
     eventId: "smp-" + event.replace(/\s+/g, "-").toLowerCase(),
-    user, event, client, eventPrice, eventDate, duration, eventDays, gr, city, country,
+    user, event, client, eventPrice, eventDate, eventDateEnd, eventDays, gr, city, country,
     items,
     submittedAt: submittedAt.toISOString(),
   };

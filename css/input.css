@@ -92,6 +92,12 @@ fieldset.form-section legend {
 .field.has-error input,
 .field.has-error select { border-color: var(--c-vendor-spend); }
 
+.field input[readonly] {
+  background: var(--paper);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 .field .error-msg {
   font-size: 0.8rem;
   color: var(--c-vendor-spend);
