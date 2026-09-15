@@ -15,13 +15,253 @@
 
 const CONFIG = {
   // Paste your deployed Google Apps Script Web App URL here to run against
-  // a real backend, e.g. "https://script.google.com/macros/s/AKfycbyDJUY1mecPE2DRjAsfN8KgJN2sdIJbg05u4xy9qv80BBm0MGiCl_JNeaQxsmoHSCUs/exec".
+  // a real backend, e.g. "https://script.google.com/macros/s/AKfycb.../exec".
   // Leave empty to run fully client-side against the bundled sample data +
   // localStorage, which is the default "run locally" mode described in
   // README.md.
   API_URL: "",
   LOCAL_STORAGE_KEY: "eo_datastory_submissions_v1",
 };
+
+/* -------------------------------------------------------------------------
+   Item & vendor dictionaries — power the searchable dropdowns in the input
+   form (js/combobox.js + js/input.js).
+
+   - ITEM_DICTIONARY_BUNDLED / VENDOR_DICTIONARY_BUNDLED below are generated
+     from Item_Dictionary.xlsx / Vendor_Dictionary.xlsx and used whenever
+     CONFIG.API_URL is empty (local/demo mode), so the dropdowns work
+     out of the box with no backend.
+   - When CONFIG.API_URL is set, loadDictionaries() instead fetches the live
+     ITEM_DICTIONARY / VENDOR_DICTIONARY sheets from the Apps Script backend
+     (see Code.gs, action=getDictionaries), so edits to those sheets show up
+     without redeploying the site.
+   ------------------------------------------------------------------------- */
+
+const ITEM_DICTIONARY_BUNDLED = [
+  { itemId: "LED-001", kategori: "LED", namaItemStandar: "Analogway Alta 4K", satuanStandar: "item" },
+  { itemId: "LED-002", kategori: "LED", namaItemStandar: "Analogway Eikos 4K", satuanStandar: "item" },
+  { itemId: "LED-003", kategori: "LED", namaItemStandar: "System EC 90", satuanStandar: "item" },
+  { itemId: "LED-004", kategori: "LED", namaItemStandar: "LED Cube 32 x 32", satuanStandar: "item" },
+  { itemId: "LED-005", kategori: "LED", namaItemStandar: "LED Cube 50 x 50", satuanStandar: "item" },
+  { itemId: "LED-006", kategori: "LED", namaItemStandar: "LED P2.6 Indoor", satuanStandar: "sqm" },
+  { itemId: "LED-007", kategori: "LED", namaItemStandar: "LED P2.6 Indoor Special Shape Flexible, Siku", satuanStandar: "package" },
+  { itemId: "LED-008", kategori: "LED", namaItemStandar: "LED P2.9 Indoor", satuanStandar: "sqm" },
+  { itemId: "LED-009", kategori: "LED", namaItemStandar: "LED P3.9 Floor", satuanStandar: "sqm" },
+  { itemId: "LED-010", kategori: "LED", namaItemStandar: "LED P3.9 Indoor", satuanStandar: "sqm" },
+  { itemId: "LED-011", kategori: "LED", namaItemStandar: "LED P3.9 Outdoor", satuanStandar: "package" },
+  { itemId: "LED-012", kategori: "LED", namaItemStandar: "LED P3.9 Transparan", satuanStandar: "sqm" },
+  { itemId: "LED-013", kategori: "LED", namaItemStandar: "Media Server", satuanStandar: "item" },
+  { itemId: "LED-014", kategori: "LED", namaItemStandar: "Optik", satuanStandar: "item" },
+  { itemId: "LED-015", kategori: "LED", namaItemStandar: "Pixel Hue Go4K", satuanStandar: "item" },
+  { itemId: "LED-016", kategori: "LED", namaItemStandar: "Rell", satuanStandar: "item" },
+  { itemId: "LED-017", kategori: "LED", namaItemStandar: "Resolume & VJ", satuanStandar: "package" },
+  { itemId: "LED-023", kategori: "LED", namaItemStandar: "System S3", satuanStandar: "package" },
+  { itemId: "LGT-001", kategori: "Lighting", namaItemStandar: "Arena", satuanStandar: "item" },
+  { itemId: "LGT-002", kategori: "Lighting", namaItemStandar: "Beam BSW 350 Watt", satuanStandar: "unit" },
+  { itemId: "LGT-003", kategori: "Lighting", namaItemStandar: "Beam Spot 380", satuanStandar: "item" },
+  { itemId: "LGT-004", kategori: "Lighting", namaItemStandar: "Bee Eye K15 19 x 40 Watt", satuanStandar: "item" },
+  { itemId: "LGT-005", kategori: "Lighting", namaItemStandar: "Bee Eye K10", satuanStandar: "item" },
+  { itemId: "LGT-006", kategori: "Lighting", namaItemStandar: "Bee Eye K15", satuanStandar: "item" },
+  { itemId: "LGT-007", kategori: "Lighting", namaItemStandar: "Brut Blinder 2 Cell COB LED", satuanStandar: "item" },
+  { itemId: "LGT-008", kategori: "Lighting", namaItemStandar: "Brut Blinder 4 Cell COB LED", satuanStandar: "item" },
+  { itemId: "LGT-009", kategori: "Lighting", namaItemStandar: "Follow Spot LED", satuanStandar: "item" },
+  { itemId: "LGT-010", kategori: "Lighting", namaItemStandar: "Fresnell 400 Watt", satuanStandar: "item" },
+  { itemId: "LGT-011", kategori: "Lighting", namaItemStandar: "Fresnell 300 Watt", satuanStandar: "item" },
+  { itemId: "LGT-012", kategori: "Lighting", namaItemStandar: "Fresnell 200 Watt", satuanStandar: "item" },
+  { itemId: "LGT-013", kategori: "Lighting", namaItemStandar: "Fresnell LED 300w Zoom", satuanStandar: "item" },
+  { itemId: "LGT-014", kategori: "Lighting", namaItemStandar: "Fresnell LED 200w COB", satuanStandar: "item" },
+  { itemId: "LGT-015", kategori: "Lighting", namaItemStandar: "Grand MA Fullsize Copy", satuanStandar: "item" },
+  { itemId: "LGT-016", kategori: "Lighting", namaItemStandar: "Grand MA Fullsize Ori", satuanStandar: "item" },
+  { itemId: "LGT-017", kategori: "Lighting", namaItemStandar: "Halogen 1000 Watt", satuanStandar: "item" },
+  { itemId: "LGT-018", kategori: "Lighting", namaItemStandar: "Halogen 1500 Watt", satuanStandar: "item" },
+  { itemId: "LGT-019", kategori: "Lighting", namaItemStandar: "Halogen LED", satuanStandar: "item" },
+  { itemId: "LGT-020", kategori: "Lighting", namaItemStandar: "Hazer", satuanStandar: "item" },
+  { itemId: "LGT-021", kategori: "Lighting", namaItemStandar: "HPIT 200 Watt", satuanStandar: "item" },
+  { itemId: "LGT-022", kategori: "Lighting", namaItemStandar: "Lecko 16/36 Degree", satuanStandar: "item" },
+  { itemId: "LGT-023", kategori: "Lighting", namaItemStandar: "Lighting Design", satuanStandar: "item" },
+  { itemId: "LGT-024", kategori: "Lighting", namaItemStandar: "Madrix System", satuanStandar: "item" },
+  { itemId: "LGT-025", kategori: "Lighting", namaItemStandar: "Mirrorball", satuanStandar: "item" },
+  { itemId: "LGT-026", kategori: "Lighting", namaItemStandar: "Moving Beam Dage BSW AK 580", satuanStandar: "item" },
+  { itemId: "LGT-027", kategori: "Lighting", namaItemStandar: "Moving Beam Dage BSW SK 680", satuanStandar: "item" },
+  { itemId: "LGT-028", kategori: "Lighting", namaItemStandar: "Moving Beam A8", satuanStandar: "item" },
+  { itemId: "LGT-029", kategori: "Lighting", namaItemStandar: "Moving Wash 6 in 1", satuanStandar: "item" },
+  { itemId: "LGT-030", kategori: "Lighting", namaItemStandar: "Par Can 53", satuanStandar: "item" },
+  { itemId: "LGT-031", kategori: "Lighting", namaItemStandar: "Par Can 64", satuanStandar: "item" },
+  { itemId: "LGT-032", kategori: "Lighting", namaItemStandar: "Par LED 120 Watt", satuanStandar: "item" },
+  { itemId: "LGT-033", kategori: "Lighting", namaItemStandar: "Par LED Dage 24x10w RGBW", satuanStandar: "item" },
+  { itemId: "LGT-034", kategori: "Lighting", namaItemStandar: "Sky Track Beam 440", satuanStandar: "item" },
+  { itemId: "LGT-035", kategori: "Lighting", namaItemStandar: "Smoke", satuanStandar: "item" },
+  { itemId: "LGT-036", kategori: "Lighting", namaItemStandar: "Spider Beam 8 Cell", satuanStandar: "item" },
+  { itemId: "LGT-037", kategori: "Lighting", namaItemStandar: "Strobo LED", satuanStandar: "item" },
+  { itemId: "LGT-038", kategori: "Lighting", namaItemStandar: "Super White / Power Par", satuanStandar: "item" },
+  { itemId: "LGT-039", kategori: "Lighting", namaItemStandar: "Tiger Touch", satuanStandar: "item" },
+  { itemId: "LGT-040", kategori: "Lighting", namaItemStandar: "Timecode System", satuanStandar: "item" },
+  { itemId: "LGT-041", kategori: "Lighting", namaItemStandar: "Wall Washer 6 in 1", satuanStandar: "item" },
+  { itemId: "LGT-042", kategori: "Lighting", namaItemStandar: "Wallwasher Dage 18x10w RGBW", satuanStandar: "item" },
+  { itemId: "LGT-043", kategori: "Lighting", namaItemStandar: "Stromy", satuanStandar: "item" },
+  { itemId: "LGT-044", kategori: "Lighting", namaItemStandar: "Elation Parled", satuanStandar: "item" },
+  { itemId: "LGT-045", kategori: "Lighting", namaItemStandar: "Nebula Wireless Battery Tube", satuanStandar: "item" },
+  { itemId: "LGT-046", kategori: "Lighting", namaItemStandar: "Moving Lightsky BWS 470W", satuanStandar: "item" },
+  { itemId: "LGT-047", kategori: "Lighting", namaItemStandar: "Moving Lightsky Lunar Max 480W", satuanStandar: "item" },
+  { itemId: "LGT-048", kategori: "Lighting", namaItemStandar: "Moving Aura BWS  400W", satuanStandar: "item" },
+  { itemId: "LGT-049", kategori: "Lighting", namaItemStandar: "Moving Profile 1000W", satuanStandar: "item" },
+  { itemId: "LGT-050", kategori: "Lighting", namaItemStandar: "Sunstrip RGB Waterproof", satuanStandar: "item" },
+  { itemId: "LGT-051", kategori: "Lighting", namaItemStandar: "Impresion Bar", satuanStandar: "item" },
+  { itemId: "LGT-052", kategori: "Lighting", namaItemStandar: "Par LED 54 Waterproof", satuanStandar: "item" },
+  { itemId: "LGT-053", kategori: "Lighting", namaItemStandar: "Minibrute Waterproof", satuanStandar: "item" },
+  { itemId: "LGT-054", kategori: "Lighting", namaItemStandar: "Magic Blade", satuanStandar: "item" },
+  { itemId: "LGT-055", kategori: "Lighting", namaItemStandar: "Followspot 4000W", satuanStandar: "item" },
+  { itemId: "LGT-056", kategori: "Lighting", namaItemStandar: "Tripod T", satuanStandar: "item" },
+  { itemId: "LGT-057", kategori: "Lighting", namaItemStandar: "Avolite Tiger Touch", satuanStandar: "item" },
+  { itemId: "LGT-058", kategori: "Lighting", namaItemStandar: "Avolite Quartz", satuanStandar: "item" },
+  { itemId: "LGT-059", kategori: "Lighting", namaItemStandar: "Moving LED Wash Solaris", satuanStandar: "item" },
+  { itemId: "LGT-060", kategori: "Lighting", namaItemStandar: "Martin Mac Viper XIP", satuanStandar: "item" },
+  { itemId: "LGT-061", kategori: "Lighting", namaItemStandar: "Aura Wash XIP", satuanStandar: "item" },
+  { itemId: "LGT-062", kategori: "Lighting", namaItemStandar: "Pixel Bar", satuanStandar: "item" },
+  { itemId: "LGT-063", kategori: "Lighting", namaItemStandar: "Martin Mac Ultra (Moving Head)", satuanStandar: "item" },
+  { itemId: "LGT-064", kategori: "Lighting", namaItemStandar: "Lighting ADVANCE 1", satuanStandar: "package" },
+  { itemId: "LGT-065", kategori: "Lighting", namaItemStandar: "Lighting ADVANCE 2", satuanStandar: "package" },
+  { itemId: "LGT-066", kategori: "Lighting", namaItemStandar: "Lighting BASIC 1", satuanStandar: "package" },
+  { itemId: "LGT-067", kategori: "Lighting", namaItemStandar: "Lighting BASIC 2", satuanStandar: "package" },
+  { itemId: "LGT-068", kategori: "Lighting", namaItemStandar: "Lighting BASIC 3", satuanStandar: "package" },
+  { itemId: "LGT-069", kategori: "Lighting", namaItemStandar: "Lighting EXPERT", satuanStandar: "package" },
+  { itemId: "LGT-070", kategori: "Lighting", namaItemStandar: "Avolite Pearl 2010", satuanStandar: "item" },
+  { itemId: "AUD-001", kategori: "Audio", namaItemStandar: "Package Backline", satuanStandar: "package" },
+  { itemId: "AUD-002", kategori: "Audio", namaItemStandar: "In Ear Monitor", satuanStandar: "item" },
+  { itemId: "AUD-003", kategori: "Audio", namaItemStandar: "Sound Package A", satuanStandar: "package" },
+  { itemId: "AUD-004", kategori: "Audio", namaItemStandar: "Sound Package B", satuanStandar: "package" },
+  { itemId: "AUD-005", kategori: "Audio", namaItemStandar: "Sound Package C", satuanStandar: "package" },
+  { itemId: "AUD-006", kategori: "Audio", namaItemStandar: "Sound Package D", satuanStandar: "package" },
+  { itemId: "AUD-007", kategori: "Audio", namaItemStandar: "Sound Package E", satuanStandar: "package" },
+  { itemId: "AUD-008", kategori: "Audio", namaItemStandar: "Sound Package F", satuanStandar: "package" },
+  { itemId: "AUD-009", kategori: "Audio", namaItemStandar: "Sound Package 2.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-010", kategori: "Audio", namaItemStandar: "Sound Package 3.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-011", kategori: "Audio", namaItemStandar: "Sound Package 4.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-012", kategori: "Audio", namaItemStandar: "Sound Package 5.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-013", kategori: "Audio", namaItemStandar: "Sound Package 6.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-014", kategori: "Audio", namaItemStandar: "Sound Package 7.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-015", kategori: "Audio", namaItemStandar: "Sound Package 8.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-016", kategori: "Audio", namaItemStandar: "Sound Package 9.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-017", kategori: "Audio", namaItemStandar: "Sound Package 10.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-018", kategori: "Audio", namaItemStandar: "Sound Package 11.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-019", kategori: "Audio", namaItemStandar: "Sound Package 12.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-020", kategori: "Audio", namaItemStandar: "Sound Package 13.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-021", kategori: "Audio", namaItemStandar: "Sound Package 14.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-022", kategori: "Audio", namaItemStandar: "Sound Package 15.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-023", kategori: "Audio", namaItemStandar: "Sound Package 5000 - 7000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-024", kategori: "Audio", namaItemStandar: "Sound Package 10.000 - 12.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-025", kategori: "Audio", namaItemStandar: "Sound Package 15.000 - 20.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-026", kategori: "Audio", namaItemStandar: "Sound Package 30.000 - 45.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-027", kategori: "Audio", namaItemStandar: "Sound Package 50.000 - 65.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-028", kategori: "Audio", namaItemStandar: "Sound Package 80.000 - 100.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-029", kategori: "Audio", namaItemStandar: "Sound Package 110.000 - 150.000 Watt", satuanStandar: "package" },
+  { itemId: "AUD-030", kategori: "Audio", namaItemStandar: "Backline / Raiders", satuanStandar: "package" },
+  { itemId: "AUD-031", kategori: "Audio", namaItemStandar: "Standard Band", satuanStandar: "package" },
+  { itemId: "AUD-032", kategori: "Audio", namaItemStandar: "Big Band Format (Band with Brass Section)", satuanStandar: "package" },
+  { itemId: "AUD-033", kategori: "Audio", namaItemStandar: "Band with Mini Orcestra", satuanStandar: "package" },
+  { itemId: "AUD-034", kategori: "Audio", namaItemStandar: "Orchestra A 45 - 60 Pcs (Band with Orchestra)", satuanStandar: "package" },
+  { itemId: "RIG-001", kategori: "Rigging", namaItemStandar: "Hoist PS 1000", satuanStandar: "Unit" },
+  { itemId: "RIG-002", kategori: "Rigging", namaItemStandar: "Loading Day H-1", satuanStandar: "item" },
+  { itemId: "RIG-003", kategori: "Rigging", namaItemStandar: "Loading Day H-2", satuanStandar: "Unit" },
+  { itemId: "RIG-004", kategori: "Rigging", namaItemStandar: "Loading Day H-3", satuanStandar: "Unit" },
+  { itemId: "RIG-005", kategori: "Rigging", namaItemStandar: "Extend Day H+1", satuanStandar: "Unit" },
+  { itemId: "RIG-006", kategori: "Rigging", namaItemStandar: "Extend Day H+2", satuanStandar: "Unit" },
+  { itemId: "RIG-007", kategori: "Rigging", namaItemStandar: "Extend Day H+3", satuanStandar: "Unit" },
+  { itemId: "RIG-008", kategori: "Rigging", namaItemStandar: "Rigging Aluminium", satuanStandar: "item" },
+  { itemId: "RIG-009", kategori: "Rigging", namaItemStandar: "Rigging Besi", satuanStandar: "item" },
+  { itemId: "RIG-010", kategori: "Rigging", namaItemStandar: "Rigging H30 DM4", satuanStandar: "Unit" },
+  { itemId: "RIG-011", kategori: "Rigging", namaItemStandar: "Rigging H30 DM6", satuanStandar: "Unit" },
+  { itemId: "RIG-012", kategori: "Rigging", namaItemStandar: "Rigging H30 DM8", satuanStandar: "Unit" },
+  { itemId: "RIG-013", kategori: "Rigging", namaItemStandar: "Rigging H30 Hitam", satuanStandar: "Meter" },
+  { itemId: "RIG-014", kategori: "Rigging", namaItemStandar: "Rigging H30 Silver", satuanStandar: "Meter" },
+  { itemId: "RIG-015", kategori: "Rigging", namaItemStandar: "Rigging H40 Hitam", satuanStandar: "Meter" },
+  { itemId: "RIG-016", kategori: "Rigging", namaItemStandar: "Rigging H40 Silver", satuanStandar: "Meter" },
+  { itemId: "RIG-018", kategori: "Rigging", namaItemStandar: "Rigging S52 Hitam", satuanStandar: "Meter" },
+  { itemId: "RIG-019", kategori: "Rigging", namaItemStandar: "Rigging S52 Silver", satuanStandar: "Meter" },
+  { itemId: "RIG-020", kategori: "Rigging", namaItemStandar: "Stagedex", satuanStandar: "Unit" },
+  { itemId: "RIG-021", kategori: "Rigging", namaItemStandar: "Tackel", satuanStandar: "Unit" },
+  { itemId: "RIG-022", kategori: "Rigging", namaItemStandar: "Tambahan Biaya Cover Kain Baru", satuanStandar: "Meter" },
+  { itemId: "RIG-023", kategori: "Rigging", namaItemStandar: "Tambahan Biaya Pengecatan Baru", satuanStandar: "Meter" },
+  { itemId: "RIG-024", kategori: "Rigging", namaItemStandar: "Ringlock Modul 2x2", satuanStandar: "Unit" },
+  { itemId: "RIG-025", kategori: "Rigging", namaItemStandar: "Ringlock Modul 1x1", satuanStandar: "Unit" },
+  { itemId: "MMD-001", kategori: "Multimedia", namaItemStandar: "MULTICAM 1 - Long Time", satuanStandar: "jam" },
+  { itemId: "MMD-002", kategori: "Multimedia", namaItemStandar: "MULTICAM 1 - Short Time", satuanStandar: "jam" },
+  { itemId: "MMD-003", kategori: "Multimedia", namaItemStandar: "MULTICAM 2 - Long Time", satuanStandar: "jam" },
+  { itemId: "MMD-004", kategori: "Multimedia", namaItemStandar: "MULTICAM 2 - Short Time", satuanStandar: "jam" },
+  { itemId: "MMD-005", kategori: "Multimedia", namaItemStandar: "MULTICAM 3 - Long Time", satuanStandar: "jam" },
+  { itemId: "MMD-006", kategori: "Multimedia", namaItemStandar: "MULTICAM 3 - Short Time", satuanStandar: "jam" },
+  { itemId: "MMD-007", kategori: "Multimedia", namaItemStandar: "Projector 10.000 ansi", satuanStandar: "item" },
+  { itemId: "MMD-008", kategori: "Multimedia", namaItemStandar: "Projector 10.000 ansi + Screen 2x3", satuanStandar: "item" },
+  { itemId: "MMD-009", kategori: "Multimedia", namaItemStandar: "Projector 10.000 ansi + Screen 3x4", satuanStandar: "item" },
+  { itemId: "MMD-010", kategori: "Multimedia", namaItemStandar: "Projector 10.000 ansi + Screen 4x6", satuanStandar: "item" },
+  { itemId: "MMD-011", kategori: "Multimedia", namaItemStandar: "Projector 5000 ansi + Screen 2x3", satuanStandar: "item" },
+  { itemId: "MMD-012", kategori: "Multimedia", namaItemStandar: "• Projector 5000 ansi\n• Screen 3x4", satuanStandar: "item" },
+  { itemId: "MMD-013", kategori: "Multimedia", namaItemStandar: "Projector 5500 ansi", satuanStandar: "item" },
+  { itemId: "MMD-014", kategori: "Multimedia", namaItemStandar: "• Projector 6000 ansi\n• Screen 2x3", satuanStandar: "item" },
+  { itemId: "MMD-015", kategori: "Multimedia", namaItemStandar: "• Projector 6000 ansi\n• Screen 3x4", satuanStandar: "item" },
+  { itemId: "MMD-016", kategori: "Multimedia", namaItemStandar: "Projector 7000 ansi", satuanStandar: "item" },
+  { itemId: "MMD-017", kategori: "Multimedia", namaItemStandar: "Screen 2x3", satuanStandar: "item" },
+  { itemId: "MMD-018", kategori: "Multimedia", namaItemStandar: "Screen 3x4", satuanStandar: "item" },
+  { itemId: "MMD-019", kategori: "Multimedia", namaItemStandar: "Screen 4x6", satuanStandar: "item" },
+  { itemId: "MMD-020", kategori: "Multimedia", namaItemStandar: "TV LED 42\"", satuanStandar: "item" },
+  { itemId: "MMD-021", kategori: "Multimedia", namaItemStandar: "TV LED 50\"", satuanStandar: "item" },
+  { itemId: "MMD-022", kategori: "Multimedia", namaItemStandar: "TV LED 60\"", satuanStandar: "item" },
+  { itemId: "MMD-023", kategori: "Multimedia", namaItemStandar: "TV LED 85\"", satuanStandar: "item" },
+  { itemId: "EFF-001", kategori: "Effect", namaItemStandar: "Bubble Machine", satuanStandar: "item" },
+  { itemId: "EFF-002", kategori: "Effect", namaItemStandar: "CO Liquid", satuanStandar: "item" },
+  { itemId: "EFF-003", kategori: "Effect", namaItemStandar: "CO2 Gun", satuanStandar: "item" },
+  { itemId: "EFF-004", kategori: "Effect", namaItemStandar: "CO2 Jet", satuanStandar: "item" },
+  { itemId: "EFF-005", kategori: "Effect", namaItemStandar: "Confetti Blower", satuanStandar: "item" },
+  { itemId: "EFF-006", kategori: "Effect", namaItemStandar: "Confetti Cannon", satuanStandar: "item" },
+  { itemId: "EFF-007", kategori: "Effect", namaItemStandar: "Confetti Sprinkler", satuanStandar: "item" },
+  { itemId: "EFF-008", kategori: "Effect", namaItemStandar: "Dry Ice Liquid", satuanStandar: "item" },
+  { itemId: "EFF-009", kategori: "Effect", namaItemStandar: "Dry Ice Machine", satuanStandar: "item" },
+  { itemId: "EFF-010", kategori: "Effect", namaItemStandar: "Giant Confetti", satuanStandar: "item" },
+  { itemId: "EFF-011", kategori: "Effect", namaItemStandar: "Hazzer Machine", satuanStandar: "item" },
+  { itemId: "EFF-012", kategori: "Effect", namaItemStandar: "Laser 15 Watt", satuanStandar: "item" },
+  { itemId: "EFF-013", kategori: "Effect", namaItemStandar: "Laser 2 Watt", satuanStandar: "item" },
+  { itemId: "EFF-014", kategori: "Effect", namaItemStandar: "Laser 4 Watt", satuanStandar: "item" },
+  { itemId: "EFF-015", kategori: "Effect", namaItemStandar: "Laser 8 Watt", satuanStandar: "item" },
+  { itemId: "EFF-016", kategori: "Effect", namaItemStandar: "Napalm", satuanStandar: "item" },
+  { itemId: "EFF-017", kategori: "Effect", namaItemStandar: "Pyro", satuanStandar: "item" },
+  { itemId: "EFF-018", kategori: "Effect", namaItemStandar: "Silverjet", satuanStandar: "item" },
+  { itemId: "EFF-019", kategori: "Effect", namaItemStandar: "Smoke Machine", satuanStandar: "item" },
+  { itemId: "EFF-020", kategori: "Effect", namaItemStandar: "Sparkular (Cold Pyro)", satuanStandar: "item" },
+  { itemId: "DOC-001", kategori: "Documentation", namaItemStandar: "Highlight Clip", satuanStandar: "output" },
+  { itemId: "DOC-002", kategori: "Documentation", namaItemStandar: "Photographer", satuanStandar: "person" },
+  { itemId: "DOC-003", kategori: "Documentation", namaItemStandar: "Package Documentation", satuanStandar: "package" },
+  { itemId: "GEN-001", kategori: "Genset", namaItemStandar: "Charge Kabel", satuanStandar: "item" },
+  { itemId: "GEN-002", kategori: "Genset", namaItemStandar: "Genset 100 KVA", satuanStandar: "item" },
+  { itemId: "GEN-003", kategori: "Genset", namaItemStandar: "Genset 150 KVA", satuanStandar: "item" },
+  { itemId: "GEN-004", kategori: "Genset", namaItemStandar: "Genset 40 KVA", satuanStandar: "item" },
+  { itemId: "GEN-005", kategori: "Genset", namaItemStandar: "Genset 50 KVA", satuanStandar: "item" },
+  { itemId: "GEN-006", kategori: "Genset", namaItemStandar: "Genset 60 KVA", satuanStandar: "item" },
+  { itemId: "GEN-007", kategori: "Genset", namaItemStandar: "Genset 80 KVA", satuanStandar: "item" },
+  { itemId: "GEN-008", kategori: "Genset", namaItemStandar: "Genset 200 KVA", satuanStandar: "item" },
+  { itemId: "GEN-009", kategori: "Genset", namaItemStandar: "Genset 250 KVA", satuanStandar: "item" },
+  { itemId: "GEN-010", kategori: "Genset", namaItemStandar: "Overtime Genset", satuanStandar: "service" },
+  { itemId: "NET-001", kategori: "Internet", namaItemStandar: "Internet", satuanStandar: "package" },
+  { itemId: "NET-002", kategori: "Internet", namaItemStandar: "Internet", satuanStandar: "package" },
+];
+
+const VENDOR_DICTIONARY_BUNDLED = [
+  { vendorId: "VND-001", namaVendor: "AV MASTER MEDIA INDONESIA", kategoriLayanan: "" },
+  { vendorId: "VND-002", namaVendor: "BANI", kategoriLayanan: "" },
+  { vendorId: "VND-003", namaVendor: "BIZNET", kategoriLayanan: "" },
+  { vendorId: "VND-004", namaVendor: "BLIGHT", kategoriLayanan: "" },
+  { vendorId: "VND-005", namaVendor: "CV NIKI LEDINDO SEMPURNA", kategoriLayanan: "" },
+  { vendorId: "VND-006", namaVendor: "NEXTPRO", kategoriLayanan: "" },
+  { vendorId: "VND-007", namaVendor: "PAPERMOTION", kategoriLayanan: "" },
+  { vendorId: "VND-008", namaVendor: "PE PLUS", kategoriLayanan: "" },
+  { vendorId: "VND-009", namaVendor: "PT ARTHUR TEKNIK INDOPRIMA", kategoriLayanan: "" },
+  { vendorId: "VND-010", namaVendor: "PT SIMA AGUSTUS", kategoriLayanan: "" },
+  { vendorId: "VND-011", namaVendor: "PT. BUDI BONZAI NUSANTARA", kategoriLayanan: "" },
+  { vendorId: "VND-012", namaVendor: "RR", kategoriLayanan: "" },
+  { vendorId: "VND-013", namaVendor: "THUNDER PRODUCTION INDONESIA", kategoriLayanan: "" },
+  { vendorId: "VND-014", namaVendor: "TONES PRO", kategoriLayanan: "" },
+  { vendorId: "VND-015", namaVendor: "V2 INDONESIA", kategoriLayanan: "" },
+];
+
 
 /* -------------------------------------------------------------------------
    Sample dataset (used whenever CONFIG.API_URL is empty). Independent of
@@ -220,6 +460,32 @@ async function loadAllEvents() {
     return payload.events || [];
   }
   return [...SAMPLE_EVENTS, ...readLocalSubmissions()];
+}
+
+// Loads the item & vendor dictionaries that power the searchable dropdowns
+// in input.html. Same local-vs-API split as loadAllEvents(): falls back to
+// the bundled arrays above when no backend is configured, so the dropdowns
+// still work in "run locally" mode.
+let _dictionariesCache = null;
+async function loadDictionaries() {
+  if (_dictionariesCache) return _dictionariesCache;
+
+  if (CONFIG.API_URL) {
+    try {
+      const res = await fetch(CONFIG.API_URL + "?action=getDictionaries");
+      if (!res.ok) throw new Error("Failed to load dictionaries from API: " + res.status);
+      const payload = await res.json();
+      _dictionariesCache = {
+        items: payload.items && payload.items.length ? payload.items : ITEM_DICTIONARY_BUNDLED,
+        vendors: payload.vendors && payload.vendors.length ? payload.vendors : VENDOR_DICTIONARY_BUNDLED,
+      };
+      return _dictionariesCache;
+    } catch (e) {
+      console.error("Failed to load dictionaries from API, falling back to bundled data.", e);
+    }
+  }
+  _dictionariesCache = { items: ITEM_DICTIONARY_BUNDLED, vendors: VENDOR_DICTIONARY_BUNDLED };
+  return _dictionariesCache;
 }
 
 async function submitEvent(report) {

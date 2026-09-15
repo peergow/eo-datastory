@@ -117,8 +117,9 @@
       </div>
       <div class="field-grid">
         <div class="field" data-field="itemCode">
-          <label>Kode barang</label>
-          <input type="text" data-name="itemCode" required />
+          <label>Item ID</label>
+          <input type="text" data-name="itemCode" placeholder="Ketik untuk cari atau klik ▾ untuk daftar" required />
+          <span class="hint">Pilih dari dictionary — Nama barang &amp; Kategori terisi otomatis.</span>
           <div class="error-msg" role="alert"></div>
         </div>
         <div class="field" data-field="itemName">
@@ -145,7 +146,7 @@
         </div>
         <div class="field" data-field="vendor">
           <label>Nama vendor</label>
-          <input type="text" data-name="vendor" required />
+          <input type="text" data-name="vendor" placeholder="Ketik untuk cari atau klik ▾ untuk daftar" required />
           <div class="error-msg" role="alert"></div>
         </div>
         <div class="field" data-field="quantity">
@@ -163,6 +164,7 @@
   </template>
 
   <script src="js/data.js"></script>
+  <script src="js/combobox.js"></script>
   <script src="js/input.js"></script>
 </body>
 </html>

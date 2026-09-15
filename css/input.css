@@ -226,3 +226,65 @@ fieldset.form-section legend {
   .submit-row { flex-direction: column; align-items: stretch; }
   #submit-report { width: 100%; }
 }
+
+/* Searchable combobox (Item ID / Vendor dropdown-search) ------------------- */
+.combo-wrapper {
+  position: relative;
+  display: flex;
+}
+.combo-wrapper .combo-input {
+  flex: 1;
+  padding-right: 34px !important;
+}
+.combo-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.combo-toggle:hover { background: rgba(0, 0, 0, 0.05); }
+.combo-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--paper-raised);
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+.combo-option {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.combo-option:hover,
+.combo-option.active {
+  background: var(--c-itemvendor);
+  color: var(--paper);
+}
+.combo-option.combo-empty {
+  color: var(--muted);
+  white-space: normal;
+  cursor: default;
+}
+.combo-option.combo-empty:hover { background: transparent; color: var(--muted); }

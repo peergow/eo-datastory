@@ -18,6 +18,59 @@
   let itemSeq = 0;
 
   /* ---------------------------------------------------------------------
+     Item & vendor dictionaries — power the Item ID / Vendor dropdown-search
+     fields. Loaded once on page load; every item block wires its own
+     combobox against these same arrays (see attachItemDictionaryCombo /
+     attachVendorCombo below).
+     --------------------------------------------------------------------- */
+  let itemDictionary = [];
+  let vendorDictionary = [];
+
+  loadDictionaries().then((dicts) => {
+    itemDictionary = dicts.items;
+    vendorDictionary = dicts.vendors;
+  }).catch((err) => {
+    console.error("Failed to load item/vendor dictionaries", err);
+  });
+
+  function filterByQuery(list, query, ...fields) {
+    const q = query.trim().toLowerCase();
+    if (!q) return list.slice(0, 50); // cap the "browse all" list so it stays snappy
+    return list.filter((entry) => fields.some((f) => String(entry[f] || "").toLowerCase().includes(q))).slice(0, 50);
+  }
+
+  function attachItemDictionaryCombo(block) {
+    const codeInput = block.querySelector('[data-name="itemCode"]');
+    const nameInput = block.querySelector('[data-name="itemName"]');
+    const categorySelect = block.querySelector('[data-name="category"]');
+
+    initCombobox(codeInput, {
+      getOptions: (query) => filterByQuery(itemDictionary, query, "itemId", "namaItemStandar", "kategori"),
+      renderLabel: (opt) => `${opt.itemId} — ${opt.namaItemStandar} (${opt.kategori})`,
+      getValue: (opt) => opt.itemId,
+      onSelect: (opt) => {
+        nameInput.value = opt.namaItemStandar;
+        if ([...categorySelect.options].some((o) => o.value === opt.kategori)) {
+          categorySelect.value = opt.kategori;
+        }
+        setError(codeInput.closest(".field"), "");
+        setError(nameInput.closest(".field"), "");
+        setError(categorySelect.closest(".field"), "");
+      },
+    });
+  }
+
+  function attachVendorCombo(block) {
+    const vendorInput = block.querySelector('[data-name="vendor"]');
+    initCombobox(vendorInput, {
+      getOptions: (query) => filterByQuery(vendorDictionary, query, "namaVendor", "vendorId"),
+      renderLabel: (opt) => opt.namaVendor,
+      getValue: (opt) => opt.namaVendor,
+      onSelect: () => setError(vendorInput.closest(".field"), ""),
+    });
+  }
+
+  /* ---------------------------------------------------------------------
      Rupiah-formatted number inputs: store the raw digits, display with
      thousands separators as the user types.
      --------------------------------------------------------------------- */
@@ -60,6 +113,9 @@
     const priceInput = node.querySelector('[data-name="totalPrice"]');
     attachRupiahFormatting(priceInput);
     priceInput.addEventListener("input", recomputeSuggestedEventPrice);
+
+    attachItemDictionaryCombo(node);
+    attachVendorCombo(node);
 
     itemsContainer.appendChild(node);
     renumberItems();
