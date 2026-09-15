@@ -15,7 +15,7 @@
 
 const CONFIG = {
   // Paste your deployed Google Apps Script Web App URL here to run against
-  // a real backend, e.g. "https://script.google.com/macros/s/AKfycbwiUmISK7KHbr2WyrOvgXlXrEY3vIm1a8-xFcrvGkjU8twOep25053VdVsRvElse2VW/exec".
+  // a real backend, e.g. "https://script.google.com/macros/s/AKfycb.../exec".
   // Leave empty to run fully client-side against the bundled sample data +
   // localStorage, which is the default "run locally" mode described in
   // README.md.
@@ -509,7 +509,11 @@ async function submitEvent(report) {
       body: JSON.stringify(report),
     });
     if (!res.ok) throw new Error("Failed to submit report: " + res.status);
-    return res.json();
+    const payload = await res.json();
+    if (payload && payload.ok === false) {
+      throw new Error(payload.error || "Backend menolak data.");
+    }
+    return payload;
   }
   writeLocalSubmission(report);
   return { ok: true, eventId: report.eventId };

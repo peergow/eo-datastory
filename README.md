@@ -139,6 +139,6 @@ vendor/item.
 - Analytics seluruhnya memakai bahasa Indonesia.
 - Form item sekarang bisa mencari pada kolom **Item ID** maupun **Nama Barang**. Mengetik Item ID di kolom Nama Barang juga akan memilih produk yang tepat.
 - Ditambahkan **Keterangan** opsional per item.
-- Backend memakai sheet tujuan **`sheets events`** dan **`sheets item`**.
+- Backend memakai sheet tujuan **`EVENTS`** dan **`ITEMS`**.
 - Event ID dibuat backend secara otomatis dengan pola `MM-ke-NN-ke-YYYY` (contoh: `09-ke-01-ke-2026`).
 - Struktur tetap HTML/CSS/JS + Apps Script sehingga file dapat diedit langsung tanpa build step.
