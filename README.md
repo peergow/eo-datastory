@@ -1,4 +1,4 @@
-# Event Data Story — Laporan Event EO & Analytics
+# MAXIMUM THE ULTIMATE — Laporan Event EO & Analytics
 
 Aplikasi web untuk (1) mencatat laporan event secara terstruktur dan (2)
 membaca data event tersebut sebagai visual essay interaktif — bukan
@@ -131,3 +131,14 @@ fungsi kecil sehingga mudah ditambahkan nanti: filter berdasarkan
 tanggal/vendor/kategori/client, perbandingan antar-event, export laporan,
 deteksi anomali, vendor performance scoring, serta halaman detail per
 vendor/item.
+
+
+## Update Rev2 — MAXIMUM THE ULTIMATE
+- Branding seluruh antarmuka menjadi **MAXIMUM THE ULTIMATE** dengan basis hitam.
+- Tersedia mode **terang (putih)** dan **gelap**; pilihan disimpan di browser.
+- Analytics seluruhnya memakai bahasa Indonesia.
+- Form item sekarang bisa mencari pada kolom **Item ID** maupun **Nama Barang**. Mengetik Item ID di kolom Nama Barang juga akan memilih produk yang tepat.
+- Ditambahkan **Keterangan** opsional per item.
+- Backend memakai sheet tujuan **`sheets events`** dan **`sheets item`**.
+- Event ID dibuat backend secara otomatis dengan pola `MM-ke-NN-ke-YYYY` (contoh: `09-ke-01-ke-2026`).
+- Struktur tetap HTML/CSS/JS + Apps Script sehingga file dapat diedit langsung tanpa build step.

@@ -437,6 +437,14 @@ function buildLabelMap(events, picker) {
    Loading
    ------------------------------------------------------------------------- */
 
+
+function makeLocalEventId(dateStr, events) {
+  const d = new Date(dateStr);
+  const month = String(d.getMonth()+1).padStart(2, "0");
+  const year = d.getFullYear();
+  const count = events.filter((e) => { const ed = new Date(e.eventDate); return ed.getFullYear() === year && String(ed.getMonth()+1).padStart(2, "0") === month; }).length + 1;
+  return `${month}-ke-${String(count).padStart(2,"0")}-ke-${year}`;
+}
 function readLocalSubmissions() {
   try {
     const raw = localStorage.getItem(CONFIG.LOCAL_STORAGE_KEY);

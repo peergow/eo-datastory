@@ -30,13 +30,15 @@
  */
 
 const SPREADSHEET_ID = "PASTE_YOUR_SPREADSHEET_ID_HERE";
+const EVENTS_SHEET_NAME = "sheets events";
+const ITEMS_SHEET_NAME = "sheets item";
 
 const EVENTS_HEADERS = [
   "event_id", "user", "event_name", "client", "event_price", "event_date",
   "event_end_date", "event_days", "gr", "city", "country", "submitted_at",
 ];
 const ITEMS_HEADERS = [
-  "item_id", "event_id", "item_code", "item_name", "category", "vendor",
+  "item_id", "event_id", "item_code", "item_name", "category", "description", "vendor",
   "quantity", "total_price",
 ];
 // ITEM_DICTIONARY / VENDOR_DICTIONARY: master reference sheets that power
@@ -54,14 +56,14 @@ function ss_() {
 
 function ensureSheets_() {
   const ss = ss_();
-  let eventsSheet = ss.getSheetByName("EVENTS");
+  let eventsSheet = ss.getSheetByName(EVENTS_SHEET_NAME);
   if (!eventsSheet) {
-    eventsSheet = ss.insertSheet("EVENTS");
+    eventsSheet = ss.insertSheet(EVENTS_SHEET_NAME);
     eventsSheet.appendRow(EVENTS_HEADERS);
   }
-  let itemsSheet = ss.getSheetByName("ITEMS");
+  let itemsSheet = ss.getSheetByName(ITEMS_SHEET_NAME);
   if (!itemsSheet) {
-    itemsSheet = ss.insertSheet("ITEMS");
+    itemsSheet = ss.insertSheet(ITEMS_SHEET_NAME);
     itemsSheet.appendRow(ITEMS_HEADERS);
   }
   let itemDictSheet = ss.getSheetByName("ITEM_DICTIONARY");
@@ -178,7 +180,8 @@ function readAllEvents_() {
         itemCode: rec.item_code,
         itemName: rec.item_name,
         category: rec.category,
-        vendor: rec.vendor,
+        description: rec.description || "",
+        vendor: rec.vendor || rec.vendor_name || "",
         quantity: Number(rec.quantity) || 0,
         totalPrice: Number(rec.total_price) || 0,
       });
@@ -212,8 +215,13 @@ function doPost(e) {
 
   const { eventsSheet, itemsSheet } = ensureSheets_();
 
+  // Generate Event ID centrally so every client uses one consistent format: MM-ke-NN-ke-YYYY.
+  if (!payload.eventId) payload.eventId = makeEventId_(eventsSheet, payload.eventDate);
+
   // Duplicate-submission guard: same event_id already stored.
-  const existingIds = eventsSheet.getRange(2, 1, Math.max(0, eventsSheet.getLastRow() - 1), 1).getValues().flat();
+  const existingIds = eventsSheet.getLastRow() > 1
+    ? eventsSheet.getRange(2, 1, eventsSheet.getLastRow() - 1, 1).getValues().flat()
+    : [];
   if (existingIds.indexOf(payload.eventId) !== -1) {
     return jsonResponse_({ ok: true, eventId: payload.eventId, note: "Duplicate submission ignored." });
   }
@@ -241,6 +249,7 @@ function doPost(e) {
       item.itemCode,
       item.itemName,
       item.category,
+      item.description || "",
       item.vendor,
       Number(item.quantity) || 0,
       Number(item.totalPrice) || 0,
@@ -250,11 +259,28 @@ function doPost(e) {
   return jsonResponse_({ ok: true, eventId: payload.eventId });
 }
 
+function makeEventId_(eventsSheet, eventDate) {
+  const d = new Date(eventDate);
+  const tz = Session.getScriptTimeZone();
+  const month = Utilities.formatDate(d, tz, "MM");
+  const year = Utilities.formatDate(d, tz, "yyyy");
+  let count = 0;
+  if (eventsSheet.getLastRow() > 1) {
+    const dates = eventsSheet.getRange(2, 6, eventsSheet.getLastRow() - 1, 1).getValues().flat();
+    dates.forEach((v) => {
+      if (!v) return;
+      const rowDate = v instanceof Date ? v : new Date(v);
+      if (!isNaN(rowDate.getTime()) && Utilities.formatDate(rowDate, tz, "MM-yyyy") === `${month}-${year}`) count += 1;
+    });
+  }
+  return `${month}-ke-${String(count + 1).padStart(2, "0")}-ke-${year}`;
+}
+
 // Backend validation, independent of whatever the frontend already checked
 // (per spec: never trust the frontend alone).
 function validateReport_(p) {
   if (!p) return "Empty payload.";
-  const requiredStrings = ["eventId", "user", "event", "client", "eventDate", "eventDateEnd", "city", "country"];
+  const requiredStrings = ["user", "event", "client", "eventDate", "eventDateEnd", "city", "country"];
   for (const key of requiredStrings) {
     if (!p[key] || typeof p[key] !== "string" || !p[key].trim()) return "Missing or invalid field: " + key;
   }

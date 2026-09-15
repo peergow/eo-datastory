@@ -39,24 +39,43 @@
     return list.filter((entry) => fields.some((f) => String(entry[f] || "").toLowerCase().includes(q))).slice(0, 50);
   }
 
+  function applyItemSelection(opt, block) {
+    const codeInput = block.querySelector('[data-name="itemCode"]');
+    const nameInput = block.querySelector('[data-name="itemName"]');
+    const categorySelect = block.querySelector('[data-name="category"]');
+    codeInput.value = opt.itemId;
+    nameInput.value = opt.namaItemStandar;
+    if ([...categorySelect.options].some((o) => o.value === opt.kategori)) categorySelect.value = opt.kategori;
+    setError(codeInput.closest(".field"), "");
+    setError(nameInput.closest(".field"), "");
+    setError(categorySelect.closest(".field"), "");
+  }
+
   function attachItemDictionaryCombo(block) {
     const codeInput = block.querySelector('[data-name="itemCode"]');
     const nameInput = block.querySelector('[data-name="itemName"]');
     const categorySelect = block.querySelector('[data-name="category"]');
+    const optionsFor = (query) => filterByQuery(itemDictionary, query, "itemId", "namaItemStandar", "kategori");
 
     initCombobox(codeInput, {
-      getOptions: (query) => filterByQuery(itemDictionary, query, "itemId", "namaItemStandar", "kategori"),
+      getOptions: optionsFor,
       renderLabel: (opt) => `${opt.itemId} — ${opt.namaItemStandar} (${opt.kategori})`,
       getValue: (opt) => opt.itemId,
-      onSelect: (opt) => {
-        nameInput.value = opt.namaItemStandar;
-        if ([...categorySelect.options].some((o) => o.value === opt.kategori)) {
-          categorySelect.value = opt.kategori;
-        }
-        setError(codeInput.closest(".field"), "");
-        setError(nameInput.closest(".field"), "");
-        setError(categorySelect.closest(".field"), "");
-      },
+      onSelect: (opt) => applyItemSelection(opt, block),
+    });
+
+    initCombobox(nameInput, {
+      getOptions: optionsFor,
+      renderLabel: (opt) => `${opt.namaItemStandar} — ${opt.itemId} (${opt.kategori})`,
+      getValue: (opt) => opt.namaItemStandar,
+      onSelect: (opt) => applyItemSelection(opt, block),
+    });
+
+    // Keep the two search fields synchronized when the user types an exact Item ID.
+    nameInput.addEventListener("blur", () => {
+      const q = nameInput.value.trim().toLowerCase();
+      const exact = itemDictionary.find((opt) => String(opt.itemId).toLowerCase() === q);
+      if (exact) applyItemSelection(exact, block);
     });
   }
 
@@ -234,6 +253,7 @@
       const vendorEl = block.querySelector('[data-name="vendor"]').closest(".field");
       const qtyInput = block.querySelector('[data-name="quantity"]');
       const qtyEl = qtyInput.closest(".field");
+      const descInput = block.querySelector('[data-name="description"]');
       const priceInput = block.querySelector('[data-name="totalPrice"]');
       const priceEl = priceInput.closest(".field");
 
@@ -274,13 +294,14 @@
       itemCode: block.querySelector('[data-name="itemCode"]').value.trim(),
       itemName: block.querySelector('[data-name="itemName"]').value.trim(),
       category: block.querySelector('[data-name="category"]').value,
+      description: block.querySelector('[data-name="description"]').value.trim(),
       vendor: block.querySelector('[data-name="vendor"]').value.trim(),
       quantity: Number(block.querySelector('[data-name="quantity"]').value),
       totalPrice: rupiahValue(block.querySelector('[data-name="totalPrice"]')),
     }));
 
     const report = {
-      eventId: "evt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+      eventId: "", // dibuat otomatis oleh backend dengan format bulan-ke-event-ke-tahun
       user: form.user.value.trim(),
       event: form.event.value.trim(),
       client: form.client.value.trim(),

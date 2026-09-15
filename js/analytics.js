@@ -106,14 +106,14 @@
       renderHorizontalBars(document.getElementById("chart-vendor-spend"), vendorBySpending, {
         valueKey: "totalSpending", labelKey: "vendor", color: ACCENT.vendorSpend,
         valueFormatter: (v) => formatRupiahCompact(v),
-        tooltipFn: (d) => `<strong>${d.vendor}</strong><br>Total spending: ${formatRupiah(d.totalSpending)}<br>Jumlah event: ${d.eventCount}<br>Rata-rata/event: ${formatRupiah(d.avgSpendingPerEvent)}`,
+        tooltipFn: (d) => `<strong>${d.vendor}</strong><br>Total pengeluaran: ${formatRupiah(d.totalSpending)}<br>Jumlah event: ${d.eventCount}<br>Rata-rata/event: ${formatRupiah(d.avgSpendingPerEvent)}`,
       });
     },
     "section-items": () => {
       renderHorizontalBars(document.getElementById("chart-items"), itemAgg, {
         valueKey: "occurrences", labelKey: "itemName", color: ACCENT.item,
         valueFormatter: (v) => `${v}×`,
-        tooltipFn: (d) => `<strong>${d.itemName}</strong><br>Jumlah event: ${d.eventCount}<br>Total pcs: ${d.totalQty}<br>Total spending: ${formatRupiah(d.totalSpending)}`,
+        tooltipFn: (d) => `<strong>${d.itemName}</strong><br>Jumlah event: ${d.eventCount}<br>Total pcs: ${d.totalQty}<br>Total pengeluaran: ${formatRupiah(d.totalSpending)}`,
       });
     },
     "section-item-vendor": () => {

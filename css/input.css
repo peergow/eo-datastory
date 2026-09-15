@@ -71,7 +71,8 @@ fieldset.form-section legend {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   font-family: var(--font-sans);
   font-size: 0.98rem;
   padding: 11px 13px;
@@ -83,14 +84,16 @@ fieldset.form-section legend {
 }
 
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   border-color: var(--c-itemvendor);
   box-shadow: 0 0 0 3px rgba(35, 61, 99, 0.12);
   outline: none;
 }
 
 .field.has-error input,
-.field.has-error select { border-color: var(--c-vendor-spend); }
+.field.has-error select,
+.field.has-error textarea { border-color: var(--c-vendor-spend); }
 
 .field input[readonly] {
   background: var(--paper);
@@ -294,3 +297,6 @@ fieldset.form-section legend {
   cursor: default;
 }
 .combo-option.combo-empty:hover { background: transparent; color: var(--muted); }
+
+.field textarea { resize:vertical; min-height:84px; line-height:1.45; }
+.optional { font-weight:400; color:var(--muted); }

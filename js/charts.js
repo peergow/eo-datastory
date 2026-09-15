@@ -251,14 +251,14 @@ function renderItemVendorBubbles(container, pairs) {
   circ
     .on("mouseenter", (event, d) => {
       d3.select(event.currentTarget).attr("fill-opacity", 1);
-      showTooltip(event, `<strong>${d.itemName}</strong> — ${d.vendor}<br>Frekuensi: ${d.frequency}×<br>Total pcs: ${d.totalPcs}<br>Total spending: ${formatRupiah(d.totalSpending)}`);
+      showTooltip(event, `<strong>${d.itemName}</strong> — ${d.vendor}<br>Frekuensi: ${d.frequency}×<br>Total pcs: ${d.totalPcs}<br>Total pengeluaran: ${formatRupiah(d.totalSpending)}`);
     })
     .on("mousemove", moveTooltip)
     .on("mouseleave", (event) => { d3.select(event.currentTarget).attr("fill-opacity", 0.75); hideTooltip(); });
 }
 
 /* -------------------------------------------------------------------------
-   Section 6 — Peak week / peak month bars (vertical)
+   Section 6 — Bar minggu/bulan terpadat (vertical)
    ------------------------------------------------------------------------- */
 function renderVerticalBars(container, data, { labelKey, valueKey, color }) {
   clear(container);
@@ -300,7 +300,7 @@ function renderVerticalBars(container, data, { labelKey, valueKey, color }) {
 }
 
 /* -------------------------------------------------------------------------
-   Section 7 — Spending + event count timeline (dual line)
+   Section 7 — Pengeluaran + jumlah event dari waktu ke waktu (dual line)
    ------------------------------------------------------------------------- */
 function renderTimeline(container, timeline) {
   clear(container);
