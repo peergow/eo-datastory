@@ -155,7 +155,9 @@ function renderHorizontalBars(container, data, { valueKey, labelKey, color, valu
   if (rows.length === 0) return;
   const barHeight = 34;
   const gap = 14;
-  const margin = { top: 8, right: 96, bottom: 8, left: 4 };
+  // top needs room for the label text sitting above the first bar (it was
+  // getting clipped by the SVG's top edge when this was too small)
+  const margin = { top: 24, right: 96, bottom: 8, left: 4 };
   const height = rows.length * (barHeight + gap) + margin.top + margin.bottom;
   const svg = makeSvg(container, height);
   const width = container.clientWidth;
@@ -211,7 +213,14 @@ function renderItemVendorBubbles(container, pairs) {
   const items = [...new Set(pairs.map((p) => p.itemName))];
   const vendors = [...new Set(pairs.map((p) => p.vendor))];
   const cell = 76;
-  const margin = { top: 90, right: 20, bottom: 20, left: 170 };
+  const labelRotationDeg = 35;
+  const labelAnchorOffset = 70; // distance from the grid's top row up to the label anchor point
+  // The vendor labels are rotated, so longer names swing further upward —
+  // without enough headroom here they get clipped by the SVG's top edge.
+  const maxVendorLabelLen = d3.max(vendors, (d) => d.length) || 0;
+  const estCharWidth = 6.4; // approx px/char at 12px sans-serif
+  const rotatedLabelSpan = Math.ceil(maxVendorLabelLen * estCharWidth * Math.sin((labelRotationDeg * Math.PI) / 180));
+  const margin = { top: Math.max(90, rotatedLabelSpan + 30 + labelAnchorOffset), right: 20, bottom: 20, left: 170 };
   const height = items.length * cell + margin.top + margin.bottom;
   const width = Math.max(container.clientWidth, vendors.length * cell + margin.left + margin.right);
   const svg = makeSvg(container, height);
@@ -225,9 +234,9 @@ function renderItemVendorBubbles(container, pairs) {
 
   g.selectAll("text.vendor-label")
     .data(vendors).join("text").attr("class", "vendor-label")
-    .attr("x", (d) => x(d)).attr("y", -70)
+    .attr("x", (d) => x(d)).attr("y", -labelAnchorOffset)
     .attr("text-anchor", "start")
-    .attr("transform", (d) => `rotate(-35, ${x(d)}, -70)`)
+    .attr("transform", (d) => `rotate(-${labelRotationDeg}, ${x(d)}, -${labelAnchorOffset})`)
     .attr("font-family", "var(--font-sans)").attr("font-size", 12).attr("fill", ACCENT.muted)
     .text((d) => d);
 

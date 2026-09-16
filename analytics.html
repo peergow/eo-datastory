@@ -29,12 +29,9 @@
 
   <main class="story" id="story-root">
 
-    <div id="loading-state" class="empty-state"><p>Memuat data event…</p></div>
-
-    <div id="empty-state" class="empty-state" hidden>
-      <h2>DATA BELUM MENCUKUPI.</h2>
-      <p>Masukkan beberapa laporan event untuk membuka analisis.</p>
-      <a class="btn btn-primary" href="input.html">Isi laporan pertama →</a>
+    <div id="loading-state" class="empty-state loading-state">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Memuat data event…</p>
     </div>
 
     <div id="story-content" hidden>
@@ -128,7 +125,7 @@
       </section>
 
       <footer class="story-footer">
-        Data diproses langsung dari laporan yang masuk — tidak ada angka yang di-hardcode. Sumber: Google Sheets via Google Apps Script (atau data contoh + localStorage saat berjalan lokal).
+        Data diproses dari laporan yang masuk.
       </footer>
     </div>
   </main>

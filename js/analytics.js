@@ -6,7 +6,6 @@
 
 (async function () {
   const loadingState = document.getElementById("loading-state");
-  const emptyState = document.getElementById("empty-state");
   const storyContent = document.getElementById("story-content");
   const progressRail = document.getElementById("progress-rail");
 
@@ -20,11 +19,6 @@
   }
 
   loadingState.hidden = true;
-
-  if (events.length === 0) {
-    emptyState.hidden = false;
-    return;
-  }
 
   storyContent.hidden = false;
   progressRail.hidden = false;
@@ -74,8 +68,8 @@
   }
 
   /* -----------------------------------------------------------------------
-     Section renderers — each is called once, the first time its section
-     scrolls into view.
+     Section renderers — each one (re)draws its chart from scratch and is
+     called every time its section scrolls into view, in either direction.
      ----------------------------------------------------------------------- */
   const sectionRenderers = {
     "section-price": () => {
@@ -128,24 +122,40 @@
     },
   };
 
-  const rendered = new Set();
-  function renderSectionOnce(id) {
-    if (rendered.has(id) || !sectionRenderers[id]) return;
-    rendered.add(id);
+  // Sections whose chart has been drawn at least once — used only to decide
+  // which charts need refreshing on window resize, not to gate replays.
+  const everRendered = new Set();
+  function runSectionRenderer(id) {
+    if (!sectionRenderers[id]) return;
+    everRendered.add(id);
     sectionRenderers[id]();
   }
 
+  // Small pause before a section's chart starts animating in, so the
+  // motion is still visible ~0.5s after the section arrives instead of
+  // looking like it has already finished the moment it appears.
+  const REVEAL_ANIM_DELAY = prefersReducedMotion ? 0 : 150;
+  let revealTimers = {};
+
   /* -----------------------------------------------------------------------
-     Reveal + lazy render on scroll, and progress rail sync
+     Reveal + lazy render on scroll, and progress rail sync. Re-plays the
+     reveal transition and re-draws the chart every time a section enters
+     the viewport — scrolling down into it or scrolling back up into it —
+     rather than only the first time it is ever seen.
      ----------------------------------------------------------------------- */
   const sections = [...document.querySelectorAll(".story-section")];
   const railButtons = [...progressRail.querySelectorAll("button")];
 
   const revealObserver = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
+      const id = entry.target.id;
       if (entry.isIntersecting) {
         entry.target.classList.add("revealed");
-        renderSectionOnce(entry.target.id);
+        clearTimeout(revealTimers[id]);
+        revealTimers[id] = setTimeout(() => runSectionRenderer(id), REVEAL_ANIM_DELAY);
+      } else {
+        entry.target.classList.remove("revealed");
+        clearTimeout(revealTimers[id]);
       }
     });
   }, { threshold: 0.15 });
@@ -172,7 +182,7 @@
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      rendered.forEach((id) => sectionRenderers[id]());
+      everRendered.forEach((id) => sectionRenderers[id]());
     }, 250);
   });
 })();
