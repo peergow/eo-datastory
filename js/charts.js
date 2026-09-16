@@ -25,17 +25,10 @@ const ACCENT = {
    renderer after a theme toggle picks up the new colors.
    ------------------------------------------------------------------------- */
 function themeTokens() {
-  const cs = getComputedStyle(document.documentElement);
-  const read = (name, fallback) => {
-    const v = (cs.getPropertyValue(name) || "").trim();
-    return v || fallback;
-  };
-  return {
-    ink: read("--ink", ACCENT.ink),
-    muted: read("--muted", ACCENT.muted),
-    line: read("--line", "#ddd8ce"),
-    paper: read("--paper", "#ffffff"),
-  };
+  const isDark = document.documentElement.dataset.theme === "dark";
+  return isDark
+    ? { ink: "#f5f5f5", muted: "#a3a3ad", line: "#2b2b31", paper: "#0b0b0d" }
+    : { ink: "#1b1b1f", muted: "#6f6d66", line: "#ddd8ce", paper: "#ffffff" };
 }
 
 /* -------------------------------------------------------------------------
@@ -256,7 +249,7 @@ function renderItemVendorBubbles(container, pairs) {
   // bubble in the first column never overlaps the text — previously they
   // ended at a fixed -14, which the biggest bubbles ran straight into.
   const maxRadius = cell / 2 - 6;
-  const labelToGridGap = maxRadius + 18;
+  const labelToGridGap = maxRadius + 34;
   const maxItemLabelLen = d3.max(items, (d) => d.length) || 0;
   const estCharWidthItem = 6.6; // approx px/char at 12px sans-serif
   const itemLabelWidth = Math.ceil(maxItemLabelLen * estCharWidthItem);
