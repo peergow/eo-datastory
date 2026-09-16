@@ -185,4 +185,13 @@
       everRendered.forEach((id) => sectionRenderers[id]());
     }, 250);
   });
+
+  // Charts read their text/line colors from CSS variables at draw time
+  // (see themeTokens() in charts.js) so that dark mode stays legible.
+  // Re-render every chart that's already been drawn as soon as the theme
+  // toggle fires, instead of leaving them on the old palette until the
+  // section happens to scroll back into view.
+  document.addEventListener("maximum-theme-change", () => {
+    everRendered.forEach((id) => sectionRenderers[id]());
+  });
 })();

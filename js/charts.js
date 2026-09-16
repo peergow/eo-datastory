@@ -17,6 +17,28 @@ const ACCENT = {
 };
 
 /* -------------------------------------------------------------------------
+   Theme-aware tokens. The ACCENT colors above stay constant across themes,
+   but text/line/stroke colors need to track the light/dark CSS variables
+   from style.css (--ink, --muted, --line, --paper) or they render as
+   dark-on-dark (or light-on-light) and disappear. Every render function
+   below reads a fresh copy of this at the top of its draw, so re-running a
+   renderer after a theme toggle picks up the new colors.
+   ------------------------------------------------------------------------- */
+function themeTokens() {
+  const cs = getComputedStyle(document.documentElement);
+  const read = (name, fallback) => {
+    const v = (cs.getPropertyValue(name) || "").trim();
+    return v || fallback;
+  };
+  return {
+    ink: read("--ink", ACCENT.ink),
+    muted: read("--muted", ACCENT.muted),
+    line: read("--line", "#ddd8ce"),
+    paper: read("--paper", "#ffffff"),
+  };
+}
+
+/* -------------------------------------------------------------------------
    Shared tooltip
    ------------------------------------------------------------------------- */
 let sharedTooltip = null;
@@ -89,6 +111,7 @@ function makeSvg(container, height) {
 function renderPriceDistribution(container, events, stats) {
   clear(container);
   if (events.length === 0) return;
+  const TH = themeTokens();
   const height = 260;
   const margin = { top: 24, right: 24, bottom: 40, left: 24 };
   const svg = makeSvg(container, height);
@@ -100,7 +123,7 @@ function renderPriceDistribution(container, events, stats) {
   const y = height / 2 - margin.top;
 
   g.append("line").attr("x1", 0).attr("x2", innerW).attr("y1", y).attr("y2", y)
-    .attr("stroke", "#ddd8ce").attr("stroke-width", 1);
+    .attr("stroke", TH.line).attr("stroke-width", 1);
 
   // box (Q1-Q3) with median line
   g.append("rect")
@@ -115,8 +138,8 @@ function renderPriceDistribution(container, events, stats) {
 
   const axis = d3.axisBottom(x).ticks(5).tickFormat((d) => formatRupiahCompact(d));
   g.append("g").attr("transform", `translate(0,${height - margin.top - margin.bottom + 20})`)
-    .call(axis).call((g2) => g2.select(".domain").attr("stroke", "#ccc"))
-    .attr("font-family", "var(--font-sans)").attr("font-size", 12).attr("color", ACCENT.muted);
+    .call(axis).call((g2) => g2.select(".domain").attr("stroke", TH.line))
+    .attr("font-family", "var(--font-sans)").attr("font-size", 12).attr("color", TH.muted);
 
   const dots = g.selectAll("circle.evt")
     .data(events)
@@ -127,7 +150,7 @@ function renderPriceDistribution(container, events, stats) {
     .attr("r", 0)
     .attr("fill", ACCENT.price)
     .attr("fill-opacity", 0.75)
-    .attr("stroke", "#fff")
+    .attr("stroke", TH.paper)
     .attr("stroke-width", 1)
     .style("cursor", "pointer");
 
@@ -153,8 +176,14 @@ function renderHorizontalBars(container, data, { valueKey, labelKey, color, valu
   clear(container);
   const rows = data.slice(0, maxBars);
   if (rows.length === 0) return;
+  const TH = themeTokens();
   const barHeight = 34;
-  const gap = 14;
+  // The row label sits above its bar at y=-6 (see below). At 13px bold the
+  // glyph ascenders reach roughly 10px above that baseline, i.e. up to -16
+  // relative to the row's top. A 14px gap put the previous row's bar bottom
+  // at only -14, so the label text and the bar above it were touching
+  // ("mepet") — bump the gap so there's real breathing room between them.
+  const gap = 26;
   // top needs room for the label text sitting above the first bar (it was
   // getting clipped by the SVG's top edge when this was too small)
   const margin = { top: 24, right: 96, bottom: 8, left: 4 };
@@ -176,7 +205,7 @@ function renderHorizontalBars(container, data, { valueKey, labelKey, color, valu
   row.append("text")
     .attr("x", 0).attr("y", -6)
     .attr("font-family", "var(--font-sans)").attr("font-size", 13).attr("font-weight", 600)
-    .attr("fill", ACCENT.ink)
+    .attr("fill", TH.ink)
     .text((d) => d[labelKey]);
 
   row.append("rect")
@@ -191,7 +220,7 @@ function renderHorizontalBars(container, data, { valueKey, labelKey, color, valu
     .attr("x", (d) => Math.max(2, x(d[valueKey])) + 10)
     .attr("y", barHeight / 2 + 5)
     .attr("font-family", "var(--font-sans)").attr("font-size", 13)
-    .attr("fill", ACCENT.muted)
+    .attr("fill", TH.muted)
     .attr("opacity", 0)
     .text((d) => valueFormatter(d[valueKey]))
     .transition().delay((_, i) => i * 70 + DUR * 0.6).duration(300)
@@ -210,6 +239,7 @@ function renderHorizontalBars(container, data, { valueKey, labelKey, color, valu
 function renderItemVendorBubbles(container, pairs) {
   clear(container);
   if (pairs.length === 0) return;
+  const TH = themeTokens();
   const items = [...new Set(pairs.map((p) => p.itemName))];
   const vendors = [...new Set(pairs.map((p) => p.vendor))];
   const cell = 76;
@@ -220,7 +250,22 @@ function renderItemVendorBubbles(container, pairs) {
   const maxVendorLabelLen = d3.max(vendors, (d) => d.length) || 0;
   const estCharWidth = 6.4; // approx px/char at 12px sans-serif
   const rotatedLabelSpan = Math.ceil(maxVendorLabelLen * estCharWidth * Math.sin((labelRotationDeg * Math.PI) / 180));
-  const margin = { top: Math.max(90, rotatedLabelSpan + 30 + labelAnchorOffset), right: 20, bottom: 20, left: 170 };
+  // Bubbles can grow up to cell/2-6 in radius, and the first vendor column
+  // sits at x=0. The item labels are right-aligned toward that column, so
+  // they need to end far enough to the left of x=0 that a max-radius
+  // bubble in the first column never overlaps the text — previously they
+  // ended at a fixed -14, which the biggest bubbles ran straight into.
+  const maxRadius = cell / 2 - 6;
+  const labelToGridGap = maxRadius + 18;
+  const maxItemLabelLen = d3.max(items, (d) => d.length) || 0;
+  const estCharWidthItem = 6.6; // approx px/char at 12px sans-serif
+  const itemLabelWidth = Math.ceil(maxItemLabelLen * estCharWidthItem);
+  const margin = {
+    top: Math.max(90, rotatedLabelSpan + 30 + labelAnchorOffset),
+    right: 20,
+    bottom: 20,
+    left: Math.max(170, itemLabelWidth + labelToGridGap + 20),
+  };
   const height = items.length * cell + margin.top + margin.bottom;
   const width = Math.max(container.clientWidth, vendors.length * cell + margin.left + margin.right);
   const svg = makeSvg(container, height);
@@ -230,21 +275,21 @@ function renderItemVendorBubbles(container, pairs) {
   const x = d3.scalePoint().domain(vendors).range([0, (vendors.length - 1) * cell]).padding(0);
   const y = d3.scalePoint().domain(items).range([0, (items.length - 1) * cell]).padding(0);
   const maxFreq = d3.max(pairs, (d) => d.frequency) || 1;
-  const r = d3.scaleSqrt().domain([0, maxFreq]).range([4, cell / 2 - 6]);
+  const r = d3.scaleSqrt().domain([0, maxFreq]).range([4, maxRadius]);
 
   g.selectAll("text.vendor-label")
     .data(vendors).join("text").attr("class", "vendor-label")
     .attr("x", (d) => x(d)).attr("y", -labelAnchorOffset)
     .attr("text-anchor", "start")
     .attr("transform", (d) => `rotate(-${labelRotationDeg}, ${x(d)}, -${labelAnchorOffset})`)
-    .attr("font-family", "var(--font-sans)").attr("font-size", 12).attr("fill", ACCENT.muted)
+    .attr("font-family", "var(--font-sans)").attr("font-size", 12).attr("fill", TH.muted)
     .text((d) => d);
 
   g.selectAll("text.item-label")
     .data(items).join("text").attr("class", "item-label")
-    .attr("x", -14).attr("y", (d) => y(d) + 4)
+    .attr("x", -labelToGridGap).attr("y", (d) => y(d) + 4)
     .attr("text-anchor", "end")
-    .attr("font-family", "var(--font-sans)").attr("font-size", 12).attr("fill", ACCENT.ink)
+    .attr("font-family", "var(--font-sans)").attr("font-size", 12).attr("fill", TH.ink)
     .text((d) => d);
 
   const circ = g.selectAll("circle.pair")
@@ -252,7 +297,7 @@ function renderItemVendorBubbles(container, pairs) {
     .attr("cx", (d) => x(d.vendor)).attr("cy", (d) => y(d.itemName))
     .attr("r", 0)
     .attr("fill", ACCENT.itemVendor).attr("fill-opacity", 0.75)
-    .attr("stroke", "#fff")
+    .attr("stroke", TH.paper)
     .style("cursor", "pointer");
 
   circ.transition().duration(DUR).delay((_, i) => i * 18).attr("r", (d) => r(d.frequency));
@@ -272,6 +317,7 @@ function renderItemVendorBubbles(container, pairs) {
 function renderVerticalBars(container, data, { labelKey, valueKey, color }) {
   clear(container);
   if (data.length === 0) return;
+  const TH = themeTokens();
   const margin = { top: 20, right: 12, bottom: 34, left: 30 };
   const height = 220;
   const svg = makeSvg(container, height);
@@ -286,8 +332,8 @@ function renderVerticalBars(container, data, { labelKey, valueKey, color }) {
 
   g.append("g").attr("transform", `translate(0,${innerH})`)
     .call(d3.axisBottom(x).tickSize(0))
-    .call((g2) => g2.select(".domain").attr("stroke", "#ccc"))
-    .selectAll("text").attr("font-family", "var(--font-sans)").attr("font-size", 12).attr("fill", ACCENT.muted);
+    .call((g2) => g2.select(".domain").attr("stroke", TH.line))
+    .selectAll("text").attr("font-family", "var(--font-sans)").attr("font-size", 12).attr("fill", TH.muted);
 
   g.selectAll("rect")
     .data(data).join("rect")
@@ -314,6 +360,7 @@ function renderVerticalBars(container, data, { labelKey, valueKey, color }) {
 function renderTimeline(container, timeline) {
   clear(container);
   if (timeline.length === 0) return;
+  const TH = themeTokens();
   const margin = { top: 24, right: 54, bottom: 40, left: 66 };
   const height = 340;
   const svg = makeSvg(container, height);
@@ -328,8 +375,8 @@ function renderTimeline(container, timeline) {
 
   g.append("g").attr("transform", `translate(0,${innerH})`)
     .call(d3.axisBottom(x).tickSize(0))
-    .call((s) => s.select(".domain").attr("stroke", "#ccc"))
-    .selectAll("text").attr("font-family", "var(--font-sans)").attr("font-size", 11).attr("fill", ACCENT.muted);
+    .call((s) => s.select(".domain").attr("stroke", TH.line))
+    .selectAll("text").attr("font-family", "var(--font-sans)").attr("font-size", 11).attr("fill", TH.muted);
 
   g.append("g")
     .call(d3.axisLeft(ySpend).ticks(5).tickFormat(formatRupiahCompact))
@@ -359,7 +406,7 @@ function renderTimeline(container, timeline) {
     }
   }
 
-  const focusLine = g.append("line").attr("y1", 0).attr("y2", innerH).attr("stroke", "#ccc").attr("opacity", 0);
+  const focusLine = g.append("line").attr("y1", 0).attr("y2", innerH).attr("stroke", TH.line).attr("opacity", 0);
 
   const dots = g.selectAll("circle.spend-dot")
     .data(timeline).join("circle").attr("class", "spend-dot")

@@ -11,6 +11,11 @@
       btn.setAttribute("aria-label", t === "dark" ? "Aktifkan mode terang" : "Aktifkan mode gelap");
       btn.setAttribute("title", t === "dark" ? "Mode terang" : "Mode gelap");
     });
+    // Let other scripts (e.g. the D3 charts in analytics.js, which read
+    // --ink/--muted/--line/--paper at render time) know the palette
+    // changed, so they can redraw instead of staying on stale colors
+    // until the next scroll-triggered re-render.
+    document.dispatchEvent(new CustomEvent("maximum-theme-change", { detail: { theme: t } }));
   }
   let saved = "light";
   try { saved = localStorage.getItem(KEY) || "light"; } catch (_) {}
