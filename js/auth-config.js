@@ -8,7 +8,7 @@ const AUTH_CONFIG = {
   // Tempel URL /exec dari deployment Login.gs (Web App terpisah) di sini,
   // contoh: "https://script.google.com/macros/s/AKfycb.../exec".
   // Kosongkan untuk mode demo lokal (lihat catatan di login.js).
-  LOGIN_API_URL: "https://script.google.com/macros/s/AKfycbxkkmo2-BUwy4NEBKUkemjBTryrfwcchPCNB3qFHcGJjHbr8OxnJhcgiG2v7oUaZu6j/exec",
+  LOGIN_API_URL: "https://script.google.com/macros/s/AKfycbxlw03mNPyig1zInCP2i3suEAqO3BXBZhLiffS-OXgCe6Bj_Hvp3kFWlpTwbVTSw4wH/exec",
 
   // Key sessionStorage yang menandai user sudah login di tab browser ini.
   SESSION_KEY: "maximum_auth_session",
