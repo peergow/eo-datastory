@@ -49,11 +49,14 @@
     setLoading(true);
 
     try {
-      const res = await fetch(AUTH_CONFIG.LOGIN_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids CORS preflight on Apps Script
-        body: JSON.stringify({ action: "login", username, password }),
-      });
+      // GET dengan query string dipakai (bukan POST body) karena Apps Script
+      // Web App sering me-redirect (302) request POST, dan pada redirect itu
+      // body-nya dibuang oleh browser — query string tetap utuh.
+      const url = AUTH_CONFIG.LOGIN_API_URL
+        + "?action=login"
+        + "&username=" + encodeURIComponent(username)
+        + "&password=" + encodeURIComponent(password);
+      const res = await fetch(url);
 
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
