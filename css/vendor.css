@@ -39,7 +39,7 @@ body{ background:var(--v-bg); color:var(--v-text); }
 
 .vendor-page .topbar{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
 
-.vendor-page .loading{ position:fixed; inset:64px 0 0 0; background:var(--v-bg); display:flex; align-items:center; justify-content:center; z-index:100; font-family:'IBM Plex Mono',monospace; color:var(--v-teal); text-align:center; padding:20px; opacity:.97; }
+.vendor-page .loading{ position:fixed; inset:64px 0 0 0; background:var(--paper); display:flex; align-items:center; justify-content:center; z-index:100; font-family:'IBM Plex Mono',monospace; color:var(--v-teal); text-align:center; padding:20px; opacity:.97; }
 
 .vendor-page .searchbar{ background:var(--v-panel); border:1px solid var(--v-line); border-radius:var(--v-radius); padding:14px 16px; margin-bottom:14px; display:flex; gap:14px; align-items:center; }
 .vendor-page .searchbar .field{ flex:1; }

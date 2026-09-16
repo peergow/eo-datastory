@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Analytics — MAXIMUM THE ULTIMATE</title>
 <link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/loader.css" />
 <link rel="stylesheet" href="css/analytics.css" />
 </head>
 <body>
@@ -30,10 +31,7 @@
 
   <main class="story" id="story-root">
 
-    <div id="loading-state" class="empty-state loading-state">
-      <div class="spinner" aria-hidden="true"></div>
-      <p>Memuat data event…</p>
-    </div>
+    <div id="loading-state" class="mx-inline" data-mx-loader="Memuat Data Event"></div>
 
     <div id="story-content" hidden>
       <section class="story-hero">
@@ -132,6 +130,7 @@
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <script src="js/loader.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/data.js"></script>
   <script src="js/charts.js"></script>

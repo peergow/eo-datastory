@@ -26,11 +26,14 @@
   let itemDictionary = [];
   let vendorDictionary = [];
 
+  MaximumLoader.show("Memuat Data Master");
   loadDictionaries().then((dicts) => {
     itemDictionary = dicts.items;
     vendorDictionary = dicts.vendors;
   }).catch((err) => {
     console.error("Failed to load item/vendor dictionaries", err);
+  }).finally(() => {
+    MaximumLoader.hide();
   });
 
   function filterByQuery(list, query, ...fields) {
@@ -318,6 +321,7 @@
 
     submitBtn.disabled = true;
     submitBtn.textContent = "Menyimpan…";
+    MaximumLoader.show("Menyimpan Laporan");
     try {
       await submitEvent(report);
       showSuccess();
@@ -326,6 +330,7 @@
       console.error(err);
       formLevelError.textContent = "Gagal menyimpan laporan. Silakan coba lagi.";
     } finally {
+      MaximumLoader.hide();
       submitBtn.disabled = false;
       submitBtn.textContent = "Submit Report";
     }

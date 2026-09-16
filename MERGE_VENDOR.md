@@ -41,3 +41,27 @@ API v4) sekarang menjadi **satu halaman di dalam repo ini**, bukan situs terpisa
 `CONFIG.API_KEY` ada di kode client, jadi selalu terlihat publik. Di Google
 Cloud Console batasi key itu: **Application restrictions → HTTP referrers**
 (domain GitHub Pages kamu saja) dan **API restrictions → Google Sheets API**.
+
+## Loader bersama
+`css/loader.css` + `js/loader.js` berisi loader "grid fill" (lingkaran hitam,
+9 kotak muncul berurutan, label besar). Dipakai di:
+
+| Titik | Label |
+|---|---|
+| login, saat verifikasi | MEMERIKSA AKUN |
+| login, splash 3 detik setelah sukses | HARAP TUNGGU |
+| index.html, memuat angka ringkasan | HARAP TUNGGU |
+| input.html, memuat data master item/vendor | MEMUAT DATA MASTER |
+| input.html, saat submit laporan | MENYIMPAN LAPORAN |
+| analytics.html, memuat data event | MEMUAT DATA EVENT |
+| vendor.html, load pertama dari Google Sheets | MEMUAT DATA VENDOR |
+
+Cara pakai di kode baru:
+```js
+MaximumLoader.show("Memuat Sesuatu");   // overlay layar penuh
+MaximumLoader.setLabel("Hampir Selesai");
+MaximumLoader.hide();
+MaximumLoader.mount("#area", "Memuat…"); // loader di dalam elemen
+```
+Atau di HTML: `<div class="mx-inline" data-mx-loader="Memuat Data"></div>`.
+Warna ikut tema otomatis lewat `--ink` / `--paper`.

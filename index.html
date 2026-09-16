@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>MAXIMUM THE ULTIMATE — Laporan Event &amp; Analytics</title>
 <link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/loader.css" />
 </head>
 <body>
   <header class="topnav">
@@ -32,10 +33,12 @@
     </div>
   </main>
 
+  <script src="js/loader.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/data.js"></script>
   <script>
     (async function () {
+      MaximumLoader.show("Harap Tunggu");
       try {
         const events = await loadAllEvents();
         const vendors = new Set();
@@ -49,6 +52,8 @@
         document.getElementById("glance-items").textContent = items.size;
       } catch (e) {
         console.error(e);
+      } finally {
+        MaximumLoader.hide();
       }
     })();
   </script>

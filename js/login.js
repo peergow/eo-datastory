@@ -47,6 +47,7 @@
     }
 
     setLoading(true);
+    MaximumLoader.show("Memeriksa Akun");
 
     try {
       // GET dengan query string dipakai (bukan POST body) karena Apps Script
@@ -65,14 +66,21 @@
         try {
           sessionStorage.setItem(AUTH_CONFIG.SESSION_KEY, data.username || username);
         } catch (_) {}
-        window.location.href = "index.html";
-      } else {
-        setError((data && data.error) || "Username atau password salah.");
+        // Splash 3 detik sebelum masuk ke halaman utama.
+        MaximumLoader.setLabel("Harap Tunggu");
+        setTimeout(function () {
+          window.location.href = "index.html";
+        }, 3000);
+        return; // jangan matikan loader / tombol, biar splash-nya utuh
       }
+
+      MaximumLoader.hide();
+      setError((data && data.error) || "Username atau password salah.");
+      setLoading(false);
     } catch (err) {
       console.error(err);
+      MaximumLoader.hide();
       setError("Tidak bisa terhubung ke server login. Coba lagi.");
-    } finally {
       setLoading(false);
     }
   });
