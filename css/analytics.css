@@ -7,6 +7,79 @@
   position: relative;
 }
 
+/* Filter bar (kontrol tanggal global) --------------------------------------- */
+.filter-bar {
+  position: sticky;
+  top: 61px; /* tinggi .topnav yang sebenarnya di style.css */
+  z-index: 35;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+  padding: 12px clamp(20px, 5vw, 56px);
+}
+.filter-bar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 22px;
+}
+.filter-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.filter-group label { font-size: 0.78rem; color: var(--muted); }
+.filter-group input[type="date"] {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  font-family: var(--font-sans);
+}
+.btn-apply-filter {
+  border: none;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-apply-filter:hover { opacity: 0.85; }
+.filter-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-presets button {
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.filter-presets button.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.filter-compare {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+  margin-left: auto;
+}
+.filter-range-label {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+@media (max-width: 700px) {
+  .filter-bar { position: static; }
+  .filter-compare { margin-left: 0; }
+}
+
 /* Progress rail ----------------------------------------------------------- */
 .progress-rail {
   position: fixed;
@@ -105,6 +178,33 @@
   line-height: 1;
 }
 .story-hero .glance-strip .label { font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
+.story-hero .glance-strip div:nth-child(4) .num { color: var(--c-payment); }
+.story-hero .glance-strip div:nth-child(5) .num { color: var(--c-attention); }
+
+.story-hero .hero-summary {
+  margin-top: 28px;
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.hero-compare {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  width: fit-content;
+  font-size: 0.85rem;
+}
+.hero-compare .compare-row { display: flex; gap: 14px; justify-content: space-between; }
+.hero-compare .up { color: var(--c-price); font-weight: 600; }
+.hero-compare .down { color: var(--c-attention); font-weight: 600; }
+.hero-compare .muted { color: var(--muted); }
 
 /* Empty state ---------------------------------------------------------------- */
 .empty-state {
@@ -231,9 +331,32 @@
 }
 .leaderboard li .rank { color: var(--muted); margin-right: 8px; }
 .leaderboard li .amount { font-weight: 600; }
+.leaderboard li.empty { color: var(--muted); justify-content: center; font-style: italic; }
+
+.leaderboard--warning li {
+  border-left: 3px solid var(--c-attention);
+  align-items: flex-start;
+}
+.leaderboard--warning li .meta { color: var(--muted); font-size: 0.8rem; margin-top: 2px; display: block; }
+.leaderboard--warning li .amount { color: var(--c-attention); }
+
+.payment-legend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  font-size: 0.82rem;
+}
+.payment-legend .lg-item { display: flex; align-items: center; gap: 6px; }
+.payment-legend .lg-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.payment-legend .lg-val { color: var(--muted); }
 
 section#section-week .chart-wrap,
 section#section-month .chart-wrap { max-width: 720px; }
+
+#chart-payment { display: flex; justify-content: center; }
+#chart-payment svg { max-width: 260px; }
 
 /* Tooltip ------------------------------------------------------------------ */
 .chart-tooltip {

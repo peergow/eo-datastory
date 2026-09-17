@@ -19,14 +19,42 @@
     </nav><button type="button" class="theme-toggle" data-theme-toggle>🌙 Gelap</button></div>
   </header>
 
+  <div class="filter-bar" id="filter-bar" hidden>
+    <div class="filter-bar-inner">
+      <div class="filter-group">
+        <label for="filter-from">Dari</label>
+        <input type="date" id="filter-from" />
+        <label for="filter-to">Sampai</label>
+        <input type="date" id="filter-to" />
+        <button type="button" class="btn-apply-filter" id="btn-apply-filter">Terapkan</button>
+      </div>
+      <div class="filter-presets" id="filter-presets">
+        <button type="button" data-preset="all" class="active">Semua Data</button>
+        <button type="button" data-preset="today">Hari Ini</button>
+        <button type="button" data-preset="week">Minggu Ini</button>
+        <button type="button" data-preset="month">Bulan Ini</button>
+        <button type="button" data-preset="year">Tahun Ini</button>
+        <button type="button" data-preset="last7">7 Hari Terakhir</button>
+        <button type="button" data-preset="last30">30 Hari Terakhir</button>
+      </div>
+      <label class="filter-compare">
+        <input type="checkbox" id="filter-compare" />
+        Bandingkan dengan periode sebelumnya
+      </label>
+    </div>
+    <div class="filter-range-label" id="filter-range-label">Menampilkan seluruh data.</div>
+  </div>
+
   <nav class="progress-rail" id="progress-rail" aria-label="Navigasi antar section analytics" hidden>
     <button data-target="section-price"><span class="dot"></span><span class="rail-label">01 EVENT</span></button>
     <button data-target="section-vendor-freq"><span class="dot"></span><span class="rail-label">02 VENDOR</span></button>
     <button data-target="section-vendor-spend"><span class="dot"></span><span class="rail-label">03 PENGELUARAN</span></button>
     <button data-target="section-items"><span class="dot"></span><span class="rail-label">04 BARANG</span></button>
     <button data-target="section-item-vendor"><span class="dot"></span><span class="rail-label">05 ITEM × VENDOR</span></button>
-    <button data-target="section-time"><span class="dot"></span><span class="rail-label">06 WAKTU</span></button>
-    <button data-target="section-trend"><span class="dot"></span><span class="rail-label">07 TREN</span></button>
+    <button data-target="section-payment"><span class="dot"></span><span class="rail-label">06 PEMBAYARAN</span></button>
+    <button data-target="section-time"><span class="dot"></span><span class="rail-label">07 WAKTU</span></button>
+    <button data-target="section-trend"><span class="dot"></span><span class="rail-label">08 TREN</span></button>
+    <button data-target="section-attention"><span class="dot"></span><span class="rail-label">09 PERHATIAN</span></button>
   </nav>
 
   <main class="story" id="story-root">
@@ -43,9 +71,13 @@
         </div>
         <div class="glance-strip">
           <div><div class="num" id="hero-count-events">0</div><div class="label">EVENT</div></div>
-          <div><div class="num" id="hero-count-spending">Rp 0</div><div class="label">TOTAL PENGELUARAN</div></div>
+          <div><div class="num" id="hero-count-spending">Rp 0</div><div class="label">TOTAL PROCUREMENT</div></div>
           <div><div class="num" id="hero-count-vendors">0</div><div class="label">VENDOR</div></div>
+          <div><div class="num" id="hero-count-paid">Rp 0</div><div class="label">SUDAH DIBAYAR</div></div>
+          <div><div class="num" id="hero-count-outstanding">Rp 0</div><div class="label">OUTSTANDING</div></div>
         </div>
+        <p class="hero-summary" id="hero-summary-sentence"></p>
+        <div class="hero-compare" id="hero-compare" hidden></div>
       </section>
 
       <section class="story-section" id="section-price" data-rail="section-price">
@@ -95,9 +127,25 @@
         <div class="chart-wrap"><div id="chart-item-vendor"></div></div>
       </section>
 
+      <section class="story-section" id="section-payment" data-rail="section-payment">
+        <div class="section-text">
+          <div class="section-kicker" style="color:var(--c-payment)">06 · STATUS PEMBAYARAN</div>
+          <h2>Berapa yang sudah lunas, dan berapa yang masih menggantung?</h2>
+          <p class="section-body">Setiap item di laporan event dikelompokkan menjadi Lunas, DP, atau Belum Bayar. Donat di bawah menunjukkan komposisi nominalnya; daftar di sampingnya menunjukkan item mana yang paling besar outstanding-nya.</p>
+          <p class="section-insight" id="payment-unknown-note" hidden></p>
+        </div>
+        <div class="two-col">
+          <div class="chart-wrap"><div id="chart-payment"></div><div class="payment-legend" id="payment-legend"></div></div>
+          <div>
+            <div class="chart-caption" style="margin-bottom:8px;font-weight:600">Outstanding Terbesar</div>
+            <ul class="leaderboard" id="list-outstanding"></ul>
+          </div>
+        </div>
+      </section>
+
       <section class="story-section" id="section-time" data-rail="section-time">
         <div class="section-text">
-          <div class="section-kicker" style="color:var(--c-vendor-freq)">06 · WAKTU EVENT TERPADAT</div>
+          <div class="section-kicker" style="color:var(--c-vendor-freq)">07 · WAKTU EVENT TERPADAT</div>
           <h2>KAPAN AKTIVITAS PALING PADAT?</h2>
           <p class="section-body">Dua sudut pandang: minggu mana dan bulan mana dalam data yang paling banyak menyelenggarakan event.</p>
           <p class="section-insight" id="peak-insight"></p>
@@ -116,11 +164,20 @@
 
       <section class="story-section" id="section-trend" data-rail="section-trend">
         <div class="section-text">
-          <div class="section-kicker" style="color:var(--c-time)">07 · PENGELUARAN DARI WAKTU KE WAKTU</div>
+          <div class="section-kicker" style="color:var(--c-time)">08 · PENGELUARAN DARI WAKTU KE WAKTU</div>
           <h2>Uang dan jumlah event tidak selalu bergerak searah.</h2>
           <p class="section-body">Garis solid mengikuti total spending per bulan, garis putus-putus mengikuti jumlah event. Arahkan kursor di sepanjang grafik untuk melihat rincian tiap bulan.</p>
         </div>
         <div class="chart-wrap"><div id="chart-timeline"></div></div>
+      </section>
+
+      <section class="story-section" id="section-attention" data-rail="section-attention">
+        <div class="section-text">
+          <div class="section-kicker" style="color:var(--c-attention)">09 · PERLU DIPERHATIKAN</div>
+          <h2>Event mana yang butuh tindak lanjut procurement?</h2>
+          <p class="section-body">Event yang tanggalnya sudah lewat tapi masih ada item belum lunas. Ini perkiraan berdasarkan tanggal event — begitu riwayat update status pembayaran tersimpan, daftar ini akan memakai tanggal pembayaran yang sebenarnya.</p>
+        </div>
+        <ul class="leaderboard leaderboard--warning" id="list-attention"></ul>
       </section>
 
       <footer class="story-footer">

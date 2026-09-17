@@ -381,8 +381,53 @@ const SAMPLE_EVENTS = [
   ]),
 ];
 
-function it(itemCode, itemName, category, vendor, quantity, totalPrice) {
-  return { itemCode, itemName, category, vendor, quantity, totalPrice };
+// Hash string sederhana dan deterministik (bukan acak sungguhan) — dipakai
+// hanya untuk memberi status pembayaran default pada data SAMPLE_EVENTS
+// yang tidak pernah mencantumkannya secara eksplisit, supaya section
+// "Status Pembayaran" tetap punya variasi untuk didemokan. Begitu backend
+// (Code.gs) mengirim KETERANGAN/NOMINAL DP/SISA DP asli dari sheet, nilai
+// asli itu yang dipakai — fungsi ini tidak pernah menimpa data nyata.
+function _hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+function _defaultPaymentStatus(itemCode, vendor, totalPrice) {
+  const h = _hashStr(String(itemCode) + "|" + String(vendor) + "|" + String(totalPrice));
+  const bucket = h % 10;
+  if (bucket <= 5) return { status: "Lunas", nominalDP: totalPrice };
+  if (bucket <= 8) return { status: "DP", nominalDP: Math.round(totalPrice * (0.3 + (h % 3) * 0.15)) };
+  return { status: "Belum Bayar", nominalDP: 0 };
+}
+
+function it(itemCode, itemName, category, vendor, quantity, totalPrice, paymentStatus, nominalDP) {
+  let status = paymentStatus;
+  let dp = nominalDP;
+  if (!status) {
+    const d = _defaultPaymentStatus(itemCode, vendor, totalPrice);
+    status = d.status;
+    if (dp == null) dp = d.nominalDP;
+  }
+  dp = Math.max(0, Math.min(Number(dp) || 0, totalPrice));
+  const sisaDP = status === "Lunas" ? 0 : Math.max(0, totalPrice - dp);
+  return { itemCode, itemName, category, vendor, quantity, totalPrice, paymentStatus: status, nominalDP: dp, sisaDP };
+}
+
+// Menjamin setiap item punya field paymentStatus/nominalDP/sisaDP, apa pun
+// sumber datanya. Data dari SAMPLE_EVENTS (lewat it() di atas) sudah selalu
+// punya field ini. Data dari backend nyata (CONFIG.API_URL) yang BELUM
+// diperbarui untuk mengirim KETERANGAN/NOMINAL DP/SISA DP akan ditandai
+// "Tidak Diketahui" — bukan ditebak jadi Lunas/DP — supaya dashboard tidak
+// menyesatkan sebelum Code.gs & sheet ITEMS diperbarui ke skema baru.
+function ensurePaymentFields(events) {
+  return events.map((ev) => ({
+    ...ev,
+    items: ev.items.map((item) =>
+      item.paymentStatus
+        ? item
+        : { ...item, paymentStatus: "Tidak Diketahui", nominalDP: 0, sisaDP: 0 }
+    ),
+  }));
 }
 
 function mk(user, event, client, eventDate, eventDays, gr, city, country, items) {
@@ -695,6 +740,117 @@ function aggregateMonthlyTimeline(events) {
   return [...byMonth.values()]
     .sort((a, b) => (a.year - b.year) || (a.month - b.month))
     .map((r) => ({ ...r, label: MONTH_LABELS_ID[r.month] + " " + r.year, avgPerEvent: r.eventCount ? r.spending / r.eventCount : 0 }));
+}
+
+/* -------------------------------------------------------------------------
+   Status Pembayaran — dipakai oleh section "Status Pembayaran" dan
+   "Perlu Diperhatikan" di analytics.html.
+   ------------------------------------------------------------------------- */
+
+// committed  = total nilai seluruh item (procurement), apa pun statusnya.
+// paid       = nominal yang sudah benar-benar keluar (Lunas penuh, atau DP
+//              sebesar nominalnya).
+// outstanding= sisa yang masih harus dibayar (sisa DP + item Belum Bayar).
+// unknownTotal / unknownCount = item yang statusnya belum tercatat sama
+//              sekali (backend lama) — dihitung di committed, tapi TIDAK
+//              dimasukkan ke paid/outstanding karena memang belum diketahui.
+function computePaymentSummary(events) {
+  let committed = 0, paid = 0, outstanding = 0, unknownTotal = 0;
+  let lunasTotal = 0, dpTotal = 0, belumTotal = 0;
+  let lunasCount = 0, dpCount = 0, belumCount = 0, unknownCount = 0;
+  for (const ev of events) {
+    for (const item of ev.items) {
+      const price = Number(item.totalPrice) || 0;
+      committed += price;
+      if (item.paymentStatus === "Lunas") {
+        paid += price; lunasTotal += price; lunasCount++;
+      } else if (item.paymentStatus === "DP") {
+        const dp = Math.min(Number(item.nominalDP) || 0, price);
+        paid += dp; outstanding += price - dp;
+        dpTotal += price; dpCount++;
+      } else if (item.paymentStatus === "Belum Bayar") {
+        outstanding += price; belumTotal += price; belumCount++;
+      } else {
+        unknownTotal += price; unknownCount++;
+      }
+    }
+  }
+  return { committed, paid, outstanding, unknownTotal, lunasTotal, dpTotal, belumTotal, lunasCount, dpCount, belumCount, unknownCount };
+}
+
+// Baris-baris item dengan outstanding terbesar, lintas semua event —
+// dipakai untuk daftar "Outstanding Terbesar" di section Status Pembayaran.
+function aggregateOutstandingList(events, limit = 8) {
+  const rows = [];
+  for (const ev of events) {
+    for (const item of ev.items) {
+      const price = Number(item.totalPrice) || 0;
+      let outstanding = 0;
+      if (item.paymentStatus === "DP") outstanding = Math.max(0, price - (Number(item.nominalDP) || 0));
+      else if (item.paymentStatus === "Belum Bayar") outstanding = price;
+      if (outstanding > 0) {
+        rows.push({ event: ev.event, eventDate: ev.eventDate, itemName: item.itemName, vendor: item.vendor, outstanding });
+      }
+    }
+  }
+  return rows.sort((a, b) => b.outstanding - a.outstanding).slice(0, limit);
+}
+
+// "Perlu Diperhatikan": event yang tanggal selesainya sudah lewat tapi
+// masih ada item belum lunas. staleDP menandai yang sudah lewat 30+ hari —
+// proxy sementara selama PAYMENT_LOG (riwayat tanggal update status) belum
+// dibangun; begitu itu ada, ini bisa diganti pakai tanggal update asli.
+function aggregateNeedsAttention(events) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const overdue = [];
+  for (const ev of events) {
+    const end = new Date(ev.eventDateEnd + "T00:00:00");
+    const daysPast = Math.floor((today - end) / 86400000);
+    if (daysPast < 0) continue;
+    let eventOutstanding = 0;
+    let hasDP = false;
+    for (const item of ev.items) {
+      const price = Number(item.totalPrice) || 0;
+      if (item.paymentStatus === "DP") { eventOutstanding += Math.max(0, price - (Number(item.nominalDP) || 0)); hasDP = true; }
+      else if (item.paymentStatus === "Belum Bayar") { eventOutstanding += price; }
+    }
+    if (eventOutstanding > 0) {
+      overdue.push({ event: ev.event, eventDateEnd: ev.eventDateEnd, daysPast, outstanding: eventOutstanding, stale: hasDP && daysPast >= 30 });
+    }
+  }
+  overdue.sort((a, b) => b.outstanding - a.outstanding);
+  return { overdue, staleDP: overdue.filter((r) => r.stale) };
+}
+
+/* -------------------------------------------------------------------------
+   Filter Tanggal — kontrol global di analytics.html. Filter berdasarkan
+   Tanggal Event (hari pertama event berlangsung), sesuai kesepakatan.
+   ------------------------------------------------------------------------- */
+function filterEventsByDateRange(events, fromISO, toISO) {
+  if (!fromISO && !toISO) return events;
+  return events.filter((ev) => {
+    if (fromISO && ev.eventDate < fromISO) return false;
+    if (toISO && ev.eventDate > toISO) return false;
+    return true;
+  });
+}
+
+function _toISODate(d) { return d.toISOString().slice(0, 10); }
+
+// Preset cepat, dihitung relatif terhadap tanggal hari ini (device/server).
+function presetRange(key) {
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const start = new Date(now);
+  switch (key) {
+    case "today": break;
+    case "week": start.setDate(now.getDate() - now.getDay()); break;
+    case "month": start.setDate(1); break;
+    case "year": start.setMonth(0, 1); break;
+    case "last7": start.setDate(now.getDate() - 6); break;
+    case "last30": start.setDate(now.getDate() - 29); break;
+    default: return { from: null, to: null };
+  }
+  return { from: _toISODate(start), to: _toISODate(now) };
 }
 
 function getLastUpdated(events) {

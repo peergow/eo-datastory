@@ -12,6 +12,9 @@ const ACCENT = {
   item: "#C9971F",
   itemVendor: "#233D63",
   time: "#B23A6B",
+  lunas: "#1F8A70",
+  dp: "#C9971F",
+  belum: "#E8552F",
   ink: "#20202A",
   muted: "#8b8a85",
 };
@@ -96,6 +99,58 @@ function makeSvg(container, height) {
     .attr("width", "100%")
     .attr("height", height)
     .attr("role", "img");
+}
+
+/* -------------------------------------------------------------------------
+   Section — Status Pembayaran (donut: Lunas / DP / Belum Bayar)
+   ------------------------------------------------------------------------- */
+function renderPaymentDonut(container, summary) {
+  clear(container);
+  const TH = themeTokens();
+  const size = 260;
+  const radius = size / 2;
+  const svg = makeSvg(container, size);
+  const g = svg.append("g").attr("transform", `translate(${size / 2},${size / 2})`);
+
+  const data = [
+    { key: "Lunas", value: summary.lunasTotal, color: ACCENT.lunas },
+    { key: "DP", value: summary.dpTotal, color: ACCENT.dp },
+    { key: "Belum Bayar", value: summary.belumTotal, color: ACCENT.belum },
+  ].filter((d) => d.value > 0);
+
+  if (!data.length) {
+    g.append("text").attr("text-anchor", "middle").attr("fill", TH.muted).style("font-size", "0.85rem").text("Belum ada data pembayaran.");
+    return;
+  }
+
+  const pie = d3.pie().value((d) => d.value).sort(null);
+  const arc = d3.arc().innerRadius(radius * 0.62).outerRadius(radius - 6);
+  const arcHover = d3.arc().innerRadius(radius * 0.62).outerRadius(radius + 4);
+
+  g.selectAll("path").data(pie(data)).join("path")
+    .attr("d", arc)
+    .attr("fill", (d) => d.data.color)
+    .attr("stroke", TH.paper)
+    .attr("stroke-width", 2)
+    .style("cursor", "pointer")
+    .on("mouseenter", function (event, d) {
+      d3.select(this).transition().duration(150).attr("d", arcHover);
+      const pct = ((d.data.value / (summary.lunasTotal + summary.dpTotal + summary.belumTotal)) * 100).toFixed(1);
+      showTooltip(event, `<strong>${d.data.key}</strong><br>${formatRupiah(d.data.value)} (${pct}%)`);
+    })
+    .on("mousemove", moveTooltip)
+    .on("mouseleave", function () {
+      d3.select(this).transition().duration(150).attr("d", arc);
+      hideTooltip();
+    });
+
+  const total = summary.lunasTotal + summary.dpTotal + summary.belumTotal;
+  g.append("text").attr("text-anchor", "middle").attr("dy", "-0.15em")
+    .attr("fill", TH.ink).style("font-family", "var(--font-display)").style("font-size", "1.25rem")
+    .text(formatRupiahCompact(total));
+  g.append("text").attr("text-anchor", "middle").attr("dy", "1.4em")
+    .attr("fill", TH.muted).style("font-size", "0.7rem").style("letter-spacing", "0.04em")
+    .text("TOTAL TERCATAT");
 }
 
 /* -------------------------------------------------------------------------

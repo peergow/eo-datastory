@@ -65,3 +65,42 @@ MaximumLoader.mount("#area", "Memuat…"); // loader di dalam elemen
 ```
 Atau di HTML: `<div class="mx-inline" data-mx-loader="Memuat Data"></div>`.
 Warna ikut tema otomatis lewat `--ink` / `--paper`.
+
+## Update Analytics — Status Pembayaran & Filter Tanggal
+
+Ditambahkan ke `analytics.html` tanpa mengubah CONFIG/link API apa pun:
+
+**Filter bar global** (sticky di bawah topnav): preset cepat (Hari Ini/
+Minggu Ini/Bulan Ini/Tahun Ini/7 & 30 Hari Terakhir/Semua Data), custom
+date range, dan checkbox "Bandingkan dengan periode sebelumnya". Filter
+berdasarkan **Tanggal Event** (hari pertama event), sesuai kesepakatan.
+Menekan preset/Terapkan memanggil `applyFilter()` di `js/analytics.js`,
+yang menyaring ulang seluruh data dan me-render ulang semua chart yang
+sedang terlihat — bukan cuma satu section.
+
+**Hero** sekarang menampilkan 5 angka (Event, Total Procurement, Vendor,
+Sudah Dibayar, Outstanding) + satu kalimat ringkasan otomatis, dan (kalau
+checkbox compare aktif) delta % vs periode sebelumnya.
+
+**Section baru "06 · Status Pembayaran"**: donat Lunas/DP/Belum Bayar
+(warna hijau/kuning/merah, konsisten dengan style badge di `vendor.html`)
++ daftar "Outstanding Terbesar".
+
+**Section baru "09 · Perlu Diperhatikan"**: daftar event yang tanggalnya
+sudah lewat tapi masih ada item belum lunas. Ini proxy berbasis tanggal
+event — begitu fitur edit status per-item (opsi B, dengan `PAYMENT_LOG`)
+dibangun, daftar ini bisa memakai tanggal update status yang sebenarnya.
+
+**Model data (`js/data.js`)**: setiap item sekarang punya `paymentStatus`
+("Lunas"/"DP"/"Belum Bayar"), `nominalDP`, `sisaDP`. Data sample diberi
+status deterministik (bukan acak — hash dari itemCode+vendor+harga) supaya
+demo selalu konsisten. Data dari backend asli yang BELUM mengirim field
+ini otomatis ditandai **"Tidak Diketahui"** oleh `ensurePaymentFields()` —
+dihitung di Total Procurement, tapi TIDAK dianggap Lunas/DP/Belum Bayar,
+supaya dashboard tidak menampilkan angka yang menyesatkan sebelum
+`Code.gs` & sheet ITEMS diperbarui ke skema baru (EVENT ID, ITEM ID, ITEM
+NAME, CATEGORY, VENDOR, TOTAL PRICE, KETERANGAN, NOMINAL DP, SISA DP).
+
+**Belum dikerjakan di update ini** (menunggu keputusan lanjutan yang sudah
+didiskusikan di chat): endpoint Apps Script untuk update status per-item,
+sheet `PAYMENT_LOG`, dan halaman "Daftar Event" untuk mengeditnya.
