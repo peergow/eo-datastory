@@ -805,6 +805,7 @@ function aggregateNeedsAttention(events) {
   const overdue = [];
   for (const ev of events) {
     const end = new Date(ev.eventDateEnd + "T00:00:00");
+    if (isNaN(end.getTime())) continue; // missing/malformed eventDateEnd — can't tell if it's overdue, so skip instead of showing "Invalid Date"/"NaN hari lalu".
     const daysPast = Math.floor((today - end) / 86400000);
     if (daysPast < 0) continue;
     let eventOutstanding = 0;

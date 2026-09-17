@@ -102,12 +102,12 @@ function makeSvg(container, height) {
 }
 
 /* -------------------------------------------------------------------------
-   Section — Status Pembayaran (donut: Lunas / DP / Belum Bayar)
+   Section — Status Pembayaran (donut: Lunas / DP)
    ------------------------------------------------------------------------- */
 function renderPaymentDonut(container, summary) {
   clear(container);
   const TH = themeTokens();
-  const size = 320;
+  const size = 420;
   const radius = size / 2;
   const svg = makeSvg(container, size);
   const g = svg.append("g").attr("transform", `translate(${size / 2},${size / 2})`);
@@ -115,7 +115,6 @@ function renderPaymentDonut(container, summary) {
   const data = [
     { key: "Lunas", value: summary.lunasTotal, color: ACCENT.lunas },
     { key: "DP", value: summary.dpTotal, color: ACCENT.dp },
-    { key: "Belum Bayar", value: summary.belumTotal, color: ACCENT.belum },
   ].filter((d) => d.value > 0);
 
   if (!data.length) {
@@ -135,7 +134,7 @@ function renderPaymentDonut(container, summary) {
     .style("cursor", "pointer")
     .on("mouseenter", function (event, d) {
       d3.select(this).transition().duration(150).attr("d", arcHover);
-      const pct = ((d.data.value / (summary.lunasTotal + summary.dpTotal + summary.belumTotal)) * 100).toFixed(1);
+      const pct = ((d.data.value / (summary.lunasTotal + summary.dpTotal)) * 100).toFixed(1);
       showTooltip(event, `<strong>${d.data.key}</strong><br>${formatRupiah(d.data.value)} (${pct}%)`);
     })
     .on("mousemove", moveTooltip)
@@ -144,7 +143,7 @@ function renderPaymentDonut(container, summary) {
       hideTooltip();
     });
 
-  const total = summary.lunasTotal + summary.dpTotal + summary.belumTotal;
+  const total = summary.lunasTotal + summary.dpTotal;
   g.append("text").attr("text-anchor", "middle").attr("dy", "-0.15em")
     .attr("fill", TH.ink).style("font-family", "var(--font-display)").style("font-size", "1.5rem")
     .text(formatRupiahCompact(total));
@@ -353,7 +352,7 @@ function renderItemVendorBubbles(container, pairs) {
   circ
     .on("mouseenter", (event, d) => {
       d3.select(event.currentTarget).attr("fill-opacity", 1);
-      showTooltip(event, `<strong>${d.itemName}</strong> — ${d.vendor}<br>Frekuensi: ${d.frequency}×<br>Total pcs: ${d.totalPcs}<br>Total pengeluaran: ${formatRupiah(d.totalSpending)}`);
+      showTooltip(event, `<strong>${d.itemName}</strong> — ${d.vendor}<br>Frekuensi: ${d.frequency}×<br>Total pengeluaran: ${formatRupiah(d.totalSpending)}`);
     })
     .on("mousemove", moveTooltip)
     .on("mouseleave", (event) => { d3.select(event.currentTarget).attr("fill-opacity", 0.75); hideTooltip(); });

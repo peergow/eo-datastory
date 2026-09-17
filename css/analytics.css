@@ -74,26 +74,6 @@
   color: var(--paper);
   border-color: var(--ink);
 }
-.filter-compare-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-left: auto;
-  max-width: 260px;
-}
-.filter-compare {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  color: var(--muted);
-  cursor: pointer;
-}
-.filter-compare-hint {
-  font-size: 0.72rem;
-  color: var(--c-vendor-spend);
-  line-height: 1.35;
-}
 .filter-range-label {
   margin-top: 8px;
   font-size: 0.78rem;
@@ -101,7 +81,6 @@
 }
 @media (max-width: 700px) {
   .filter-bar { position: static; }
-  .filter-compare-wrap { margin-left: 0; max-width: none; }
 }
 
 /* Progress rail ----------------------------------------------------------- */
@@ -212,23 +191,6 @@
   font-size: 1rem;
   line-height: 1.5;
 }
-
-.hero-compare {
-  margin-top: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-  width: fit-content;
-  font-size: 0.85rem;
-}
-.hero-compare .compare-row { display: flex; gap: 14px; justify-content: space-between; }
-.hero-compare .up { color: var(--c-price); font-weight: 600; }
-.hero-compare .down { color: var(--c-attention); font-weight: 600; }
-.hero-compare .muted { color: var(--muted); }
 
 /* Empty state ---------------------------------------------------------------- */
 .empty-state {
@@ -399,7 +361,7 @@
   .leaderboard li .amount { margin-left: auto; }
 }
 
-/* Payment breakdown (Lunas / DP / Belum Bayar) ------------------------------
+/* Payment breakdown (Lunas / DP) ---------------------------------------
    Replaces the old inline dot-legend: shows the concrete Rupiah amount,
    the % share of total, and the item count for each status, so the split
    is readable at a glance instead of only on hover over the donut. */
@@ -437,8 +399,8 @@
 section#section-week .chart-wrap,
 section#section-month .chart-wrap { max-width: 720px; }
 
-#chart-payment { display: flex; justify-content: center; }
-#chart-payment svg { max-width: 320px; }
+#chart-payment { display: flex; justify-content: center; align-items: center; padding: 12px 0; }
+#chart-payment svg { width: 100%; max-width: 420px; height: auto; }
 
 /* Tooltip ------------------------------------------------------------------ */
 .chart-tooltip {

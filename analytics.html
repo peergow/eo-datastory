@@ -38,13 +38,6 @@
         <button type="button" data-preset="last7">7 Hari Terakhir</button>
         <button type="button" data-preset="last30">30 Hari Terakhir</button>
       </div>
-      <div class="filter-compare-wrap">
-        <label class="filter-compare">
-          <input type="checkbox" id="filter-compare" />
-          Bandingkan dengan periode sebelumnya
-        </label>
-        <span class="filter-compare-hint" id="filter-compare-hint" hidden>Pilih rentang tanggal spesifik dulu (misalnya "Bulan Ini") — perbandingan tidak berlaku untuk "Semua Data".</span>
-      </div>
     </div>
     <div class="filter-range-label" id="filter-range-label">Menampilkan seluruh data.</div>
   </div>
@@ -81,7 +74,6 @@
           <div><div class="num" id="hero-count-outstanding">Rp 0</div><div class="label">OUTSTANDING</div></div>
         </div>
         <p class="hero-summary" id="hero-summary-sentence"></p>
-        <div class="hero-compare" id="hero-compare" hidden></div>
       </section>
 
       <section class="story-section" id="section-price" data-rail="section-price">
@@ -117,7 +109,7 @@
         <div class="section-text">
           <div class="section-kicker" style="color:var(--c-item)">04 · BARANG PALING SERING DISEWA</div>
           <h2>BARANG APA YANG TERUS MUNCUL?</h2>
-          <p class="section-body">Barang yang paling sering muncul di seluruh laporan event, lengkap dengan total pcs dan total pengeluaran untuk masing-masing.</p>
+          <p class="section-body">Barang yang paling sering muncul di seluruh laporan event, lengkap dengan total pengeluaran untuk masing-masing.</p>
         </div>
         <div class="chart-wrap"><div id="chart-items"></div></div>
       </section>
@@ -126,7 +118,7 @@
         <div class="section-text">
           <div class="section-kicker" style="color:var(--c-itemvendor)">05 · ITEM × VENDOR</div>
           <h2>Kombinasi mana yang paling sering dipasangkan?</h2>
-          <p class="section-body">Ukuran lingkaran menunjukkan seberapa sering kombinasi barang dan vendor tersebut muncul bersama. Arahkan kursor untuk melihat total pcs dan total spending.</p>
+          <p class="section-body">Ukuran lingkaran menunjukkan seberapa sering kombinasi barang dan vendor tersebut muncul bersama. Arahkan kursor untuk melihat total spending.</p>
         </div>
         <div class="chart-wrap"><div id="chart-item-vendor"></div></div>
       </section>
@@ -135,7 +127,7 @@
         <div class="section-text">
           <div class="section-kicker" style="color:var(--c-payment)">06 · STATUS PEMBAYARAN</div>
           <h2>Berapa yang sudah lunas, dan berapa yang masih menggantung?</h2>
-          <p class="section-body">Setiap item di laporan event dikelompokkan menjadi Lunas, DP, atau Belum Bayar. Donat di bawah menunjukkan komposisi nominalnya; daftar di sampingnya menunjukkan item mana yang paling besar outstanding-nya.</p>
+          <p class="section-body">Setiap item di laporan event dikelompokkan menjadi Lunas atau DP. Donat di bawah menunjukkan komposisi nominalnya; daftar di sampingnya menunjukkan item mana yang paling besar outstanding-nya.</p>
           <p class="section-insight" id="payment-unknown-note" hidden></p>
         </div>
         <div class="two-col">

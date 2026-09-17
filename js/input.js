@@ -111,9 +111,9 @@
 
   /* ---------------------------------------------------------------------
      Payment status ↔ Nominal DP: only "DP" leaves nominalDP editable.
-     "Lunas" and "Belum Bayar" derive it automatically (mirrors the
-     normalizePayment_ logic in Code.gs, so the preview matches what the
-     backend will actually store).
+     "Lunas" derives it automatically (mirrors the normalizePayment_ logic
+     in Code.gs, so the preview matches what the backend will actually
+     store).
      --------------------------------------------------------------------- */
   function attachPaymentFields(block, priceInput) {
     const statusSelect = block.querySelector('[data-name="paymentStatus"]');
@@ -125,9 +125,6 @@
       const total = rupiahValue(priceInput) || 0;
       if (statusSelect.value === "Lunas") {
         dpInput.value = total.toLocaleString("id-ID");
-        dpInput.disabled = true;
-      } else if (statusSelect.value === "Belum Bayar") {
-        dpInput.value = "0";
         dpInput.disabled = true;
       } else if (statusSelect.value === "DP") {
         dpInput.disabled = false;

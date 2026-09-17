@@ -7,10 +7,10 @@
 
    Everything that depends on the dataset (hero numbers, every chart, the
    payment-status donut, the outstanding list, the "needs attention" list)
-   is rebuilt from scratch by applyFilter() whenever the date range or the
-   "compare with previous period" checkbox changes — there is exactly one
-   place (computeView) that turns a list of events into every number this
-   page shows, so a new filter never needs a second copy of the formulas.
+   is rebuilt from scratch by applyFilter() whenever the date range changes
+   — there is exactly one place (computeView) that turns a list of events
+   into every number this page shows, so a new filter never needs a second
+   copy of the formulas.
    ========================================================================= */
 
 (async function () {
@@ -40,14 +40,12 @@
   }
 
   /* -----------------------------------------------------------------------
-     Filter bar — presets, custom range, and the "compare" checkbox.
+     Filter bar — presets and custom range.
      ----------------------------------------------------------------------- */
   const fromInput = document.getElementById("filter-from");
   const toInput = document.getElementById("filter-to");
   const applyBtn = document.getElementById("btn-apply-filter");
   const presetButtons = [...document.querySelectorAll("#filter-presets button")];
-  const compareCheckbox = document.getElementById("filter-compare");
-  const compareHint = document.getElementById("filter-compare-hint");
   const rangeLabelEl = document.getElementById("filter-range-label");
   const filterBarSentinel = document.getElementById("filter-bar-sentinel");
 
@@ -59,12 +57,11 @@
   }
 
   // Re-filtering re-renders every section already seen (see applyFilter),
-  // which changes their height (a shorter "Outstanding Terbesar" list, a
-  // hero-compare box appearing/disappearing, etc). Left alone, that shifts
-  // all the content below it and the page visibly jumps even though the
-  // person didn't scroll. Snapping back to the exact scroll offset right
-  // after the re-render keeps whatever section they were looking at in the
-  // same spot on screen.
+  // which changes their height (a shorter "Outstanding Terbesar" list,
+  // etc). Left alone, that shifts all the content below it and the page
+  // visibly jumps even though the person didn't scroll. Snapping back to
+  // the exact scroll offset right after the re-render keeps whatever
+  // section they were looking at in the same spot on screen.
   function withScrollPreserved(fn) {
     const y = window.scrollY;
     fn();
@@ -100,8 +97,6 @@
       applyFilter();
     });
   });
-
-  compareCheckbox.addEventListener("change", () => withScrollPreserved(applyFilter));
 
   // The filter bar sits sticky right under the topnav; a small shadow
   // makes it read as a floating panel once it's actually pinned there,
@@ -140,10 +135,9 @@
   const compactRupiah = (v) => "Rp " + Math.round(v / 1e6).toLocaleString("id-ID") + " Jt";
 
   /* -----------------------------------------------------------------------
-     Hero — 5 angka ringkasan + kalimat otomatis + (opsional) perbandingan
-     dengan periode sebelumnya.
+     Hero — 5 angka ringkasan + kalimat otomatis.
      ----------------------------------------------------------------------- */
-  function renderHero(view, compareView) {
+  function renderHero(view) {
     countUp(document.getElementById("hero-count-events"), view.events.length);
     countUp(document.getElementById("hero-count-vendors"), view.vendorCount);
     countUp(document.getElementById("hero-count-spending"), view.totalSpending, { prefix: "Rp ", formatter: (v) => Math.round(v / 1e6).toLocaleString("id-ID"), suffix: " Jt" });
@@ -161,31 +155,6 @@
         (topVendor ? ` Vendor terbesar: ${topVendor.vendor}.` : "") +
         (topItem ? ` Item terbesar: ${topItem.itemName}.` : "");
     }
-
-    const compareBox = document.getElementById("hero-compare");
-    if (compareView) {
-      compareBox.hidden = false;
-      compareBox.innerHTML = "";
-      const rows = [
-        ["Total Procurement", view.totalSpending, compareView.totalSpending],
-        ["Sudah Dibayar", view.paymentSummary.paid, compareView.paymentSummary.paid],
-        ["Outstanding", view.paymentSummary.outstanding, compareView.paymentSummary.outstanding],
-      ];
-      rows.forEach(([label, curr, prev]) => {
-        const div = document.createElement("div");
-        div.className = "compare-row";
-        if (prev > 0) {
-          const pct = ((curr - prev) / prev) * 100;
-          const arrow = pct >= 0 ? "▲" : "▼";
-          div.innerHTML = `<span>${label}</span><span class="${pct >= 0 ? "up" : "down"}">${arrow} ${Math.abs(pct).toFixed(1)}% vs periode sebelumnya</span>`;
-        } else {
-          div.innerHTML = `<span>${label}</span><span class="muted">tidak ada pembanding (periode lalu = 0)</span>`;
-        }
-        compareBox.appendChild(div);
-      });
-    } else {
-      compareBox.hidden = true;
-    }
   }
 
   /* -----------------------------------------------------------------------
@@ -193,16 +162,15 @@
      tidak lewat D3 karena bukan grafik.
      ----------------------------------------------------------------------- */
   // Shows both the concrete Rupiah amount AND the % share for each payment
-  // status (Lunas / DP / Belum Bayar), plus how many items make up that
-  // amount — not just a color-coded dot, so the split is readable without
-  // needing to hover the donut.
+  // status (Lunas / DP), plus how many items make up that amount — not
+  // just a color-coded dot, so the split is readable without needing to
+  // hover the donut.
   function renderPaymentLegend(summary) {
     const box = document.getElementById("payment-legend");
-    const total = summary.lunasTotal + summary.dpTotal + summary.belumTotal;
+    const total = summary.lunasTotal + summary.dpTotal;
     const rows = [
       ["Lunas", summary.lunasTotal, summary.lunasCount, ACCENT.lunas],
       ["DP", summary.dpTotal, summary.dpCount, ACCENT.dp],
-      ["Belum Bayar", summary.belumTotal, summary.belumCount, ACCENT.belum],
     ];
     box.className = "payment-breakdown";
     if (total === 0) {
@@ -229,7 +197,7 @@
     const noteEl = document.getElementById("payment-unknown-note");
     if (summary.unknownTotal > 0) {
       noteEl.hidden = false;
-      noteEl.textContent = `${formatRupiahCompact(summary.unknownTotal)} dari ${summary.unknownCount} item belum mencantumkan status pembayaran (menunggu pembaruan backend ke skema sheet baru) — tidak dihitung sebagai Lunas, DP, maupun Belum Bayar di atas.`;
+      noteEl.textContent = `${formatRupiahCompact(summary.unknownTotal)} dari ${summary.unknownCount} item belum mencantumkan status pembayaran (menunggu pembaruan backend ke skema sheet baru) — tidak dihitung sebagai Lunas maupun DP di atas.`;
     } else {
       noteEl.hidden = true;
     }
@@ -318,7 +286,7 @@
         renderHorizontalBars(document.getElementById("chart-items"), view.itemAgg, {
           valueKey: "occurrences", labelKey: "itemName", color: ACCENT.item,
           valueFormatter: (v) => `${v}×`,
-          tooltipFn: (d) => `<strong>${d.itemName}</strong><br>Jumlah event: ${d.eventCount}<br>Total pcs: ${d.totalQty}<br>Total pengeluaran: ${formatRupiah(d.totalSpending)}`,
+          tooltipFn: (d) => `<strong>${d.itemName}</strong><br>Jumlah event: ${d.eventCount}<br>Total pengeluaran: ${formatRupiah(d.totalSpending)}`,
         });
       },
       "section-item-vendor": () => {
@@ -366,34 +334,14 @@
     const events = filterEventsByDateRange(rawEvents, activeFrom, activeTo);
     const view = computeView(events);
 
-    // "Bandingkan dengan periode sebelumnya" only makes sense against a
-    // bounded range (there's no "period before all data"). Rather than
-    // silently doing nothing when someone checks it on "Semua Data" —
-    // which looked broken — show them why, right next to the checkbox.
-    const canCompare = Boolean(activeFrom && activeTo);
-    compareHint.hidden = !(compareCheckbox.checked && !canCompare);
-
-    let compareView = null;
-    if (compareCheckbox.checked && canCompare) {
-      const fromD = new Date(activeFrom + "T00:00:00");
-      const toD = new Date(activeTo + "T00:00:00");
-      const spanDays = Math.round((toD - fromD) / 86400000) + 1;
-      const prevTo = new Date(fromD); prevTo.setDate(prevTo.getDate() - 1);
-      const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - spanDays + 1);
-      const prevEvents = filterEventsByDateRange(rawEvents, prevFrom.toISOString().slice(0, 10), prevTo.toISOString().slice(0, 10));
-      compareView = computeView(prevEvents);
-    }
-
-    renderHero(view, compareView);
+    renderHero(view);
     currentRenderers = buildSectionRenderers(view);
     everRendered.forEach((id) => currentRenderers[id] && currentRenderers[id]());
 
     const rangeText = (activeFrom || activeTo)
       ? `Menampilkan ${activeFrom ? formatDateID(activeFrom) : "awal data"} – ${activeTo ? formatDateID(activeTo) : "sekarang"} (${view.events.length} event).`
       : `Menampilkan seluruh data (${view.events.length} event).`;
-    rangeLabelEl.textContent = compareView
-      ? `${rangeText} Perbandingan dengan periode sebelumnya ditampilkan di bagian atas halaman (hero).`
-      : rangeText;
+    rangeLabelEl.textContent = rangeText;
   }
 
   applyFilter(); // render awal: "Semua Data"
