@@ -83,6 +83,25 @@ fieldset.form-section legend {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Native <select> gets the same downward-triangle affordance as the
+   custom combobox toggle (js/combobox.js) so every "click to see a list"
+   field in the form reads as the same control, instead of the combobox's
+   custom ▾ button next to the browser's own (different-looking) arrow. */
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 34px;
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 11px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%236f6d66' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  cursor: pointer;
+}
+:root[data-theme="dark"] .field select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23a3a3ad' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
+
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
@@ -253,13 +272,18 @@ fieldset.form-section legend {
   width: 28px;
   height: 28px;
   border: none;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.85rem;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 11px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%236f6d66' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   cursor: pointer;
   border-radius: 6px;
 }
-.combo-toggle:hover { background: rgba(0, 0, 0, 0.05); }
+:root[data-theme="dark"] .combo-toggle {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23a3a3ad' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
+.combo-toggle:hover { background-color: rgba(0, 0, 0, 0.05); }
 .combo-list {
   position: absolute;
   top: calc(100% + 4px);

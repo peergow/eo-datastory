@@ -47,7 +47,9 @@
   const applyBtn = document.getElementById("btn-apply-filter");
   const presetButtons = [...document.querySelectorAll("#filter-presets button")];
   const compareCheckbox = document.getElementById("filter-compare");
+  const compareHint = document.getElementById("filter-compare-hint");
   const rangeLabelEl = document.getElementById("filter-range-label");
+  const filterBarSentinel = document.getElementById("filter-bar-sentinel");
 
   let activeFrom = null;
   let activeTo = null;
@@ -56,33 +58,60 @@
     presetButtons.forEach((b) => b.classList.toggle("active", b.dataset.preset === key));
   }
 
+  // Re-filtering re-renders every section already seen (see applyFilter),
+  // which changes their height (a shorter "Outstanding Terbesar" list, a
+  // hero-compare box appearing/disappearing, etc). Left alone, that shifts
+  // all the content below it and the page visibly jumps even though the
+  // person didn't scroll. Snapping back to the exact scroll offset right
+  // after the re-render keeps whatever section they were looking at in the
+  // same spot on screen.
+  function withScrollPreserved(fn) {
+    const y = window.scrollY;
+    fn();
+    requestAnimationFrame(() => window.scrollTo(0, y));
+  }
+
   presetButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      setPresetActive(btn.dataset.preset);
-      if (btn.dataset.preset === "all") {
-        activeFrom = null;
-        activeTo = null;
-        fromInput.value = "";
-        toInput.value = "";
-      } else {
-        const r = presetRange(btn.dataset.preset);
-        activeFrom = r.from;
-        activeTo = r.to;
-        fromInput.value = r.from || "";
-        toInput.value = r.to || "";
-      }
-      applyFilter();
+      withScrollPreserved(() => {
+        setPresetActive(btn.dataset.preset);
+        if (btn.dataset.preset === "all") {
+          activeFrom = null;
+          activeTo = null;
+          fromInput.value = "";
+          toInput.value = "";
+        } else {
+          const r = presetRange(btn.dataset.preset);
+          activeFrom = r.from;
+          activeTo = r.to;
+          fromInput.value = r.from || "";
+          toInput.value = r.to || "";
+        }
+        applyFilter();
+      });
     });
   });
 
   applyBtn.addEventListener("click", () => {
-    setPresetActive(null);
-    activeFrom = fromInput.value || null;
-    activeTo = toInput.value || null;
-    applyFilter();
+    withScrollPreserved(() => {
+      setPresetActive(null);
+      activeFrom = fromInput.value || null;
+      activeTo = toInput.value || null;
+      applyFilter();
+    });
   });
 
-  compareCheckbox.addEventListener("change", applyFilter);
+  compareCheckbox.addEventListener("change", () => withScrollPreserved(applyFilter));
+
+  // The filter bar sits sticky right under the topnav; a small shadow
+  // makes it read as a floating panel once it's actually pinned there,
+  // instead of looking fused to the nav while the page is scrolled.
+  if (filterBarSentinel) {
+    new IntersectionObserver(
+      ([entry]) => filterBar.classList.toggle("is-stuck", !entry.isIntersecting),
+      { threshold: 0, rootMargin: "-61px 0px 0px 0px" }
+    ).observe(filterBarSentinel);
+  }
 
   /* -----------------------------------------------------------------------
      computeView — the single place that turns a list of events into every
@@ -163,16 +192,39 @@
      Payment legend + outstanding list + "perlu diperhatikan" — DOM lists,
      tidak lewat D3 karena bukan grafik.
      ----------------------------------------------------------------------- */
+  // Shows both the concrete Rupiah amount AND the % share for each payment
+  // status (Lunas / DP / Belum Bayar), plus how many items make up that
+  // amount — not just a color-coded dot, so the split is readable without
+  // needing to hover the donut.
   function renderPaymentLegend(summary) {
     const box = document.getElementById("payment-legend");
+    const total = summary.lunasTotal + summary.dpTotal + summary.belumTotal;
     const rows = [
-      ["Lunas", summary.lunasTotal, ACCENT.lunas],
-      ["DP", summary.dpTotal, ACCENT.dp],
-      ["Belum Bayar", summary.belumTotal, ACCENT.belum],
+      ["Lunas", summary.lunasTotal, summary.lunasCount, ACCENT.lunas],
+      ["DP", summary.dpTotal, summary.dpCount, ACCENT.dp],
+      ["Belum Bayar", summary.belumTotal, summary.belumCount, ACCENT.belum],
     ];
-    box.innerHTML = rows.map(([label, val, color]) =>
-      `<span class="lg-item"><span class="lg-dot" style="background:${color}"></span>${label} <span class="lg-val">${formatRupiahCompact(val)}</span></span>`
-    ).join("");
+    box.className = "payment-breakdown";
+    if (total === 0) {
+      box.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;margin:0">Belum ada data pembayaran pada periode ini.</p>';
+    } else {
+      box.innerHTML = rows.map(([label, val, count, color]) => {
+        const pct = (val / total) * 100;
+        return `
+          <div class="pb-row">
+            <div class="pb-row-top">
+              <span class="pb-dot" style="background:${color}"></span>
+              <span class="pb-label">${label}</span>
+              <span class="pb-pct">${pct.toFixed(1)}%</span>
+            </div>
+            <div class="pb-bar"><span style="width:${pct}%;background:${color}"></span></div>
+            <div class="pb-row-bottom">
+              <span>${formatRupiah(val)}</span>
+              <span>${count} item</span>
+            </div>
+          </div>`;
+      }).join("");
+    }
 
     const noteEl = document.getElementById("payment-unknown-note");
     if (summary.unknownTotal > 0) {
@@ -190,7 +242,16 @@
       return;
     }
     list.innerHTML = rows.map((r, i) =>
-      `<li><span><span class="rank">${i + 1}</span>${r.itemName} — ${r.event}<span class="meta">${r.vendor} · ${formatDateID(r.eventDate)}</span></span><span class="amount">${formatRupiah(r.outstanding)}</span></li>`
+      `<li>
+        <span class="ob-main">
+          <span class="rank">${i + 1}</span>
+          <span class="ob-text">
+            <span class="ob-title">${r.itemName} — ${r.event}</span>
+            <span class="meta">${r.vendor} · ${formatDateID(r.eventDate)}</span>
+          </span>
+        </span>
+        <span class="amount">${formatRupiah(r.outstanding)}</span>
+      </li>`
     ).join("");
   }
 
@@ -305,8 +366,15 @@
     const events = filterEventsByDateRange(rawEvents, activeFrom, activeTo);
     const view = computeView(events);
 
+    // "Bandingkan dengan periode sebelumnya" only makes sense against a
+    // bounded range (there's no "period before all data"). Rather than
+    // silently doing nothing when someone checks it on "Semua Data" —
+    // which looked broken — show them why, right next to the checkbox.
+    const canCompare = Boolean(activeFrom && activeTo);
+    compareHint.hidden = !(compareCheckbox.checked && !canCompare);
+
     let compareView = null;
-    if (compareCheckbox.checked && activeFrom && activeTo) {
+    if (compareCheckbox.checked && canCompare) {
       const fromD = new Date(activeFrom + "T00:00:00");
       const toD = new Date(activeTo + "T00:00:00");
       const spanDays = Math.round((toD - fromD) / 86400000) + 1;
@@ -320,9 +388,12 @@
     currentRenderers = buildSectionRenderers(view);
     everRendered.forEach((id) => currentRenderers[id] && currentRenderers[id]());
 
-    rangeLabelEl.textContent = (activeFrom || activeTo)
+    const rangeText = (activeFrom || activeTo)
       ? `Menampilkan ${activeFrom ? formatDateID(activeFrom) : "awal data"} – ${activeTo ? formatDateID(activeTo) : "sekarang"} (${view.events.length} event).`
       : `Menampilkan seluruh data (${view.events.length} event).`;
+    rangeLabelEl.textContent = compareView
+      ? `${rangeText} Perbandingan dengan periode sebelumnya ditampilkan di bagian atas halaman (hero).`
+      : rangeText;
   }
 
   applyFilter(); // render awal: "Semua Data"

@@ -19,6 +19,7 @@
     </nav><button type="button" class="theme-toggle" data-theme-toggle>🌙 Gelap</button></div>
   </header>
 
+  <div class="filter-bar-sentinel" id="filter-bar-sentinel"></div>
   <div class="filter-bar" id="filter-bar" hidden>
     <div class="filter-bar-inner">
       <div class="filter-group">
@@ -37,10 +38,13 @@
         <button type="button" data-preset="last7">7 Hari Terakhir</button>
         <button type="button" data-preset="last30">30 Hari Terakhir</button>
       </div>
-      <label class="filter-compare">
-        <input type="checkbox" id="filter-compare" />
-        Bandingkan dengan periode sebelumnya
-      </label>
+      <div class="filter-compare-wrap">
+        <label class="filter-compare">
+          <input type="checkbox" id="filter-compare" />
+          Bandingkan dengan periode sebelumnya
+        </label>
+        <span class="filter-compare-hint" id="filter-compare-hint" hidden>Pilih rentang tanggal spesifik dulu (misalnya "Bulan Ini") — perbandingan tidak berlaku untuk "Semua Data".</span>
+      </div>
     </div>
     <div class="filter-range-label" id="filter-range-label">Menampilkan seluruh data.</div>
   </div>

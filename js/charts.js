@@ -107,7 +107,7 @@ function makeSvg(container, height) {
 function renderPaymentDonut(container, summary) {
   clear(container);
   const TH = themeTokens();
-  const size = 260;
+  const size = 320;
   const radius = size / 2;
   const svg = makeSvg(container, size);
   const g = svg.append("g").attr("transform", `translate(${size / 2},${size / 2})`);
@@ -146,10 +146,10 @@ function renderPaymentDonut(container, summary) {
 
   const total = summary.lunasTotal + summary.dpTotal + summary.belumTotal;
   g.append("text").attr("text-anchor", "middle").attr("dy", "-0.15em")
-    .attr("fill", TH.ink).style("font-family", "var(--font-display)").style("font-size", "1.25rem")
+    .attr("fill", TH.ink).style("font-family", "var(--font-display)").style("font-size", "1.5rem")
     .text(formatRupiahCompact(total));
-  g.append("text").attr("text-anchor", "middle").attr("dy", "1.4em")
-    .attr("fill", TH.muted).style("font-size", "0.7rem").style("letter-spacing", "0.04em")
+  g.append("text").attr("text-anchor", "middle").attr("dy", "1.5em")
+    .attr("fill", TH.muted).style("font-size", "0.75rem").style("letter-spacing", "0.04em")
     .text("TOTAL TERCATAT");
 }
 

@@ -36,7 +36,6 @@ function initCombobox(inputEl, { getOptions, renderLabel, getValue, onSelect }) 
   toggleBtn.className = "combo-toggle";
   toggleBtn.setAttribute("aria-label", "Tampilkan daftar");
   toggleBtn.tabIndex = -1;
-  toggleBtn.textContent = "▾";
   wrapper.appendChild(toggleBtn);
 
   const list = document.createElement("ul");
