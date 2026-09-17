@@ -110,6 +110,45 @@
   attachRupiahFormatting(priceField);
 
   /* ---------------------------------------------------------------------
+     Payment status ↔ Nominal DP: only "DP" leaves nominalDP editable.
+     "Lunas" and "Belum Bayar" derive it automatically (mirrors the
+     normalizePayment_ logic in Code.gs, so the preview matches what the
+     backend will actually store).
+     --------------------------------------------------------------------- */
+  function attachPaymentFields(block, priceInput) {
+    const statusSelect = block.querySelector('[data-name="paymentStatus"]');
+    const dpInput = block.querySelector('[data-name="nominalDP"]');
+    const sisaDisplay = block.querySelector('[data-sisa-dp-display]');
+    attachRupiahFormatting(dpInput);
+
+    function syncDP() {
+      const total = rupiahValue(priceInput) || 0;
+      if (statusSelect.value === "Lunas") {
+        dpInput.value = total.toLocaleString("id-ID");
+        dpInput.disabled = true;
+      } else if (statusSelect.value === "Belum Bayar") {
+        dpInput.value = "0";
+        dpInput.disabled = true;
+      } else if (statusSelect.value === "DP") {
+        dpInput.disabled = false;
+      } else {
+        dpInput.value = "";
+        dpInput.disabled = true;
+      }
+      const dp = rupiahValue(dpInput) || 0;
+      const sisa = Math.max(0, total - dp);
+      sisaDisplay.textContent = statusSelect.value
+        ? `Sisa DP: Rp ${sisa.toLocaleString("id-ID")}`
+        : "";
+    }
+
+    statusSelect.addEventListener("change", syncDP);
+    dpInput.addEventListener("input", syncDP);
+    priceInput.addEventListener("input", syncDP);
+    syncDP();
+  }
+
+  /* ---------------------------------------------------------------------
      Dynamic item blocks
      --------------------------------------------------------------------- */
   function renumberItems() {
@@ -136,6 +175,7 @@
     attachRupiahFormatting(priceInput);
     priceInput.addEventListener("input", recomputeSuggestedEventPrice);
 
+    attachPaymentFields(node, priceInput);
     attachItemDictionaryCombo(node);
     attachVendorCombo(node);
 
@@ -254,24 +294,29 @@
       const nameEl = block.querySelector('[data-name="itemName"]').closest(".field");
       const catEl = block.querySelector('[data-name="category"]').closest(".field");
       const vendorEl = block.querySelector('[data-name="vendor"]').closest(".field");
-      const qtyInput = block.querySelector('[data-name="quantity"]');
-      const qtyEl = qtyInput.closest(".field");
       const descInput = block.querySelector('[data-name="description"]');
       const priceInput = block.querySelector('[data-name="totalPrice"]');
       const priceEl = priceInput.closest(".field");
+      const statusSelect = block.querySelector('[data-name="paymentStatus"]');
+      const statusEl = statusSelect.closest(".field");
+      const dpInput = block.querySelector('[data-name="nominalDP"]');
+      const dpEl = dpInput.closest(".field");
 
       setError(codeEl, codeEl.querySelector("input").value.trim() ? "" : "Wajib diisi.");
       setError(nameEl, nameEl.querySelector("input").value.trim() ? "" : "Wajib diisi.");
       setError(catEl, catEl.querySelector("select").value ? "" : "Pilih kategori.");
       setError(vendorEl, vendorEl.querySelector("input").value.trim() ? "" : "Wajib diisi.");
 
-      const qty = Number(qtyInput.value);
-      setError(qtyEl, (Number.isFinite(qty) && qty > 0) ? "" : "Jumlah pcs harus angka positif.");
-
       const price = rupiahValue(priceInput);
       setError(priceEl, (Number.isFinite(price) && price >= 0) ? "" : "Harga harus berupa angka.");
 
-      if (![codeEl, nameEl, catEl, vendorEl, qtyEl, priceEl].every((el) => !el.classList.contains("has-error"))) {
+      setError(statusEl, statusSelect.value ? "" : "Pilih status pembayaran.");
+
+      const dp = rupiahValue(dpInput);
+      const dpOk = statusSelect.value !== "DP" || (Number.isFinite(dp) && dp >= 0 && dp <= (Number.isFinite(price) ? price : Infinity));
+      setError(dpEl, dpOk ? "" : "Nominal DP harus antara 0 dan harga total.");
+
+      if (![codeEl, nameEl, catEl, vendorEl, priceEl, statusEl, dpEl].every((el) => !el.classList.contains("has-error"))) {
         ok = false;
       }
     }
@@ -299,8 +344,9 @@
       category: block.querySelector('[data-name="category"]').value,
       description: block.querySelector('[data-name="description"]').value.trim(),
       vendor: block.querySelector('[data-name="vendor"]').value.trim(),
-      quantity: Number(block.querySelector('[data-name="quantity"]').value),
       totalPrice: rupiahValue(block.querySelector('[data-name="totalPrice"]')),
+      paymentStatus: block.querySelector('[data-name="paymentStatus"]').value,
+      nominalDP: rupiahValue(block.querySelector('[data-name="nominalDP"]')) || 0,
     }));
 
     const report = {

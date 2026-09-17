@@ -154,9 +154,21 @@
           <input type="text" data-name="vendor" placeholder="Ketik untuk cari atau klik ▾ untuk daftar" required />
           <div class="error-msg" role="alert"></div>
         </div>
-        <div class="field" data-field="quantity">
-          <label>Jumlah / pcs</label>
-          <input type="number" min="1" step="1" data-name="quantity" required />
+        <div class="field" data-field="paymentStatus">
+          <label>Status Pembayaran</label>
+          <select data-name="paymentStatus" required>
+            <option value="">Pilih status</option>
+            <option value="Lunas">Lunas</option>
+            <option value="DP">DP</option>
+            <option value="Belum Bayar">Belum Bayar</option>
+          </select>
+          <div class="error-msg" role="alert"></div>
+        </div>
+        <div class="field" data-field="nominalDP">
+          <label>Nominal DP (Rp)</label>
+          <input type="text" inputmode="numeric" placeholder="cth. 2.000.000" data-name="nominalDP" disabled />
+          <span class="hint">Otomatis 0 (Belum Bayar) atau sama dengan Harga Total (Lunas). Isi manual hanya untuk DP.</span>
+          <span class="hint" data-sisa-dp-display></span>
           <div class="error-msg" role="alert"></div>
         </div>
         <div class="field span-2" data-field="description">
