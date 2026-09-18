@@ -750,13 +750,19 @@ function aggregateMonthlyTimeline(events) {
 // committed  = total nilai seluruh item (procurement), apa pun statusnya.
 // paid       = nominal yang sudah benar-benar keluar (Lunas penuh, atau DP
 //              sebesar nominalnya).
-// outstanding= sisa yang masih harus dibayar (sisa DP + item Belum Bayar).
+// outstanding= sisa yang masih harus dibayar (sisa DP + item Belum Bayar) —
+//              inilah nominal yang ditampilkan sebagai variabel ketiga
+//              "Belum Dibayar" di donat status pembayaran.
+// dpTotal    = total HARGA item berstatus DP (dipakai untuk hitung sisa).
+// dpPaidTotal= dari dpTotal itu, bagian yang SUDAH benar-benar dibayarkan
+//              sebagai DP (variabel "DP" di donat) — sisanya (dpTotal -
+//              dpPaidTotal) ikut masuk ke `outstanding`/"Belum Dibayar".
 // unknownTotal / unknownCount = item yang statusnya belum tercatat sama
 //              sekali (backend lama) — dihitung di committed, tapi TIDAK
 //              dimasukkan ke paid/outstanding karena memang belum diketahui.
 function computePaymentSummary(events) {
   let committed = 0, paid = 0, outstanding = 0, unknownTotal = 0;
-  let lunasTotal = 0, dpTotal = 0, belumTotal = 0;
+  let lunasTotal = 0, dpTotal = 0, dpPaidTotal = 0, belumTotal = 0;
   let lunasCount = 0, dpCount = 0, belumCount = 0, unknownCount = 0;
   for (const ev of events) {
     for (const item of ev.items) {
@@ -767,7 +773,7 @@ function computePaymentSummary(events) {
       } else if (item.paymentStatus === "DP") {
         const dp = Math.min(Number(item.nominalDP) || 0, price);
         paid += dp; outstanding += price - dp;
-        dpTotal += price; dpCount++;
+        dpTotal += price; dpPaidTotal += dp; dpCount++;
       } else if (item.paymentStatus === "Belum Bayar") {
         outstanding += price; belumTotal += price; belumCount++;
       } else {
@@ -775,7 +781,7 @@ function computePaymentSummary(events) {
       }
     }
   }
-  return { committed, paid, outstanding, unknownTotal, lunasTotal, dpTotal, belumTotal, lunasCount, dpCount, belumCount, unknownCount };
+  return { committed, paid, outstanding, unknownTotal, lunasTotal, dpTotal, dpPaidTotal, belumTotal, lunasCount, dpCount, belumCount, unknownCount };
 }
 
 // Baris-baris item dengan outstanding terbesar, lintas semua event —
@@ -796,32 +802,6 @@ function aggregateOutstandingList(events, limit = 8) {
   return rows.sort((a, b) => b.outstanding - a.outstanding).slice(0, limit);
 }
 
-// "Perlu Diperhatikan": event yang tanggal selesainya sudah lewat tapi
-// masih ada item belum lunas. staleDP menandai yang sudah lewat 30+ hari —
-// proxy sementara selama PAYMENT_LOG (riwayat tanggal update status) belum
-// dibangun; begitu itu ada, ini bisa diganti pakai tanggal update asli.
-function aggregateNeedsAttention(events) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const overdue = [];
-  for (const ev of events) {
-    const end = new Date(ev.eventDateEnd + "T00:00:00");
-    if (isNaN(end.getTime())) continue; // missing/malformed eventDateEnd — can't tell if it's overdue, so skip instead of showing "Invalid Date"/"NaN hari lalu".
-    const daysPast = Math.floor((today - end) / 86400000);
-    if (daysPast < 0) continue;
-    let eventOutstanding = 0;
-    let hasDP = false;
-    for (const item of ev.items) {
-      const price = Number(item.totalPrice) || 0;
-      if (item.paymentStatus === "DP") { eventOutstanding += Math.max(0, price - (Number(item.nominalDP) || 0)); hasDP = true; }
-      else if (item.paymentStatus === "Belum Bayar") { eventOutstanding += price; }
-    }
-    if (eventOutstanding > 0) {
-      overdue.push({ event: ev.event, eventDateEnd: ev.eventDateEnd, daysPast, outstanding: eventOutstanding, stale: hasDP && daysPast >= 30 });
-    }
-  }
-  overdue.sort((a, b) => b.outstanding - a.outstanding);
-  return { overdue, staleDP: overdue.filter((r) => r.stale) };
-}
 
 /* -------------------------------------------------------------------------
    Filter Tanggal — kontrol global di analytics.html. Filter berdasarkan

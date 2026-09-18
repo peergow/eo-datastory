@@ -102,7 +102,10 @@ function makeSvg(container, height) {
 }
 
 /* -------------------------------------------------------------------------
-   Section — Status Pembayaran (donut: Lunas / DP)
+   Section — Status Pembayaran (donut: Lunas / DP / Belum Dibayar)
+   "DP" di sini hanya nominal yang SUDAH dibayarkan sebagai DP; sisa yang
+   belum dibayar dari item DP itu digabung ke slice "Belum Dibayar" bersama
+   item yang memang sama sekali belum dibayar (summary.outstanding).
    ------------------------------------------------------------------------- */
 function renderPaymentDonut(container, summary) {
   clear(container);
@@ -114,13 +117,16 @@ function renderPaymentDonut(container, summary) {
 
   const data = [
     { key: "Lunas", value: summary.lunasTotal, color: ACCENT.lunas },
-    { key: "DP", value: summary.dpTotal, color: ACCENT.dp },
+    { key: "DP", value: summary.dpPaidTotal, color: ACCENT.dp },
+    { key: "Belum Dibayar", value: summary.outstanding, color: ACCENT.belum },
   ].filter((d) => d.value > 0);
 
   if (!data.length) {
     g.append("text").attr("text-anchor", "middle").attr("fill", TH.muted).style("font-size", "0.85rem").text("Belum ada data pembayaran.");
     return;
   }
+
+  const total = summary.lunasTotal + summary.dpPaidTotal + summary.outstanding;
 
   const pie = d3.pie().value((d) => d.value).sort(null);
   const arc = d3.arc().innerRadius(radius * 0.62).outerRadius(radius - 6);
@@ -134,7 +140,7 @@ function renderPaymentDonut(container, summary) {
     .style("cursor", "pointer")
     .on("mouseenter", function (event, d) {
       d3.select(this).transition().duration(150).attr("d", arcHover);
-      const pct = ((d.data.value / (summary.lunasTotal + summary.dpTotal)) * 100).toFixed(1);
+      const pct = ((d.data.value / total) * 100).toFixed(1);
       showTooltip(event, `<strong>${d.data.key}</strong><br>${formatRupiah(d.data.value)} (${pct}%)`);
     })
     .on("mousemove", moveTooltip)
@@ -143,7 +149,6 @@ function renderPaymentDonut(container, summary) {
       hideTooltip();
     });
 
-  const total = summary.lunasTotal + summary.dpTotal;
   g.append("text").attr("text-anchor", "middle").attr("dy", "-0.15em")
     .attr("fill", TH.ink).style("font-family", "var(--font-display)").style("font-size", "1.5rem")
     .text(formatRupiahCompact(total));

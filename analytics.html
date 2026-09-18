@@ -51,7 +51,6 @@
     <button data-target="section-payment"><span class="dot"></span><span class="rail-label">06 PEMBAYARAN</span></button>
     <button data-target="section-time"><span class="dot"></span><span class="rail-label">07 WAKTU</span></button>
     <button data-target="section-trend"><span class="dot"></span><span class="rail-label">08 TREN</span></button>
-    <button data-target="section-attention"><span class="dot"></span><span class="rail-label">09 PERHATIAN</span></button>
   </nav>
 
   <main class="story" id="story-root">
@@ -127,12 +126,22 @@
         <div class="section-text">
           <div class="section-kicker" style="color:var(--c-payment)">06 · STATUS PEMBAYARAN</div>
           <h2>Berapa yang sudah lunas, dan berapa yang masih menggantung?</h2>
-          <p class="section-body">Setiap item di laporan event dikelompokkan menjadi Lunas atau DP. Donat di bawah menunjukkan komposisi nominalnya; daftar di sampingnya menunjukkan item mana yang paling besar outstanding-nya.</p>
+          <p class="section-body">Setiap item di laporan event dikelompokkan menjadi tiga: Lunas, DP, dan Belum Dibayar. Untuk item berstatus DP, hanya nominal yang sudah benar-benar dibayarkan yang dihitung sebagai "DP" — sisanya yang belum dibayar masuk ke kelompok "Belum Dibayar", bersama item yang memang sama sekali belum dibayar. Donat di bawah menunjukkan komposisi nominalnya; daftar di sampingnya menunjukkan item mana yang paling besar outstanding-nya.</p>
           <p class="section-insight" id="payment-unknown-note" hidden></p>
         </div>
+        <div class="payment-filter-bar">
+          <div class="filter-group">
+            <label for="payment-filter-vendor">Vendor</label>
+            <select id="payment-filter-vendor"><option value="">Semua Vendor</option></select>
+          </div>
+          <div class="filter-group">
+            <label for="payment-filter-event">Event</label>
+            <select id="payment-filter-event"><option value="">Semua Event</option></select>
+          </div>
+        </div>
         <div class="two-col">
-          <div class="chart-wrap"><div id="chart-payment"></div><div class="payment-legend" id="payment-legend"></div></div>
-          <div>
+          <div class="chart-wrap payment-chart-card"><div id="chart-payment"></div><div class="payment-legend" id="payment-legend"></div></div>
+          <div class="chart-wrap outstanding-card">
             <div class="chart-caption" style="margin-bottom:8px;font-weight:600">Outstanding Terbesar</div>
             <ul class="leaderboard" id="list-outstanding"></ul>
           </div>
@@ -165,15 +174,6 @@
           <p class="section-body">Garis solid mengikuti total spending per bulan, garis putus-putus mengikuti jumlah event. Arahkan kursor di sepanjang grafik untuk melihat rincian tiap bulan.</p>
         </div>
         <div class="chart-wrap"><div id="chart-timeline"></div></div>
-      </section>
-
-      <section class="story-section" id="section-attention" data-rail="section-attention">
-        <div class="section-text">
-          <div class="section-kicker" style="color:var(--c-attention)">09 · PERLU DIPERHATIKAN</div>
-          <h2>Event mana yang butuh tindak lanjut procurement?</h2>
-          <p class="section-body">Event yang tanggalnya sudah lewat tapi masih ada item belum lunas. Ini perkiraan berdasarkan tanggal event — begitu riwayat update status pembayaran tersimpan, daftar ini akan memakai tanggal pembayaran yang sebenarnya.</p>
-        </div>
-        <ul class="leaderboard leaderboard--warning" id="list-attention"></ul>
       </section>
 
       <footer class="story-footer">

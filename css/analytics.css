@@ -299,6 +299,41 @@
   .two-col { grid-template-columns: 1fr; }
 }
 
+/* Payment section — vendor/event drill-down bar, dipusatkan (centered)
+   di atas donat + daftar outstanding. */
+.payment-filter-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px 28px;
+  flex-wrap: wrap;
+  margin: 4px 0 28px;
+}
+.payment-filter-bar select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+
+/* Kedua kartu (donat & daftar outstanding) memakai kartu yang sama
+   (.chart-wrap) supaya tingginya senada; daftar outstanding dibatasi
+   tingginya sendiri dan scroll di dalam kartunya, jadi tidak melebihi
+   tinggi kartu donat di sebelahnya. */
+.outstanding-card {
+  max-height: 468px;
+  overflow-y: auto;
+}
+.payment-chart-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .leaderboard {
   list-style: none;
   margin: 0; padding: 0;
@@ -351,9 +386,6 @@
 }
 .leaderboard li.empty { color: var(--muted); justify-content: center; font-style: italic; }
 
-.leaderboard--warning li .amount { color: var(--c-attention); }
-.leaderboard--warning li { border-left: 3px solid var(--c-attention); }
-
 @media (max-width: 520px) {
   .leaderboard li { flex-wrap: wrap; }
   .leaderboard li .ob-title,
@@ -361,7 +393,7 @@
   .leaderboard li .amount { margin-left: auto; }
 }
 
-/* Payment breakdown (Lunas / DP) ---------------------------------------
+/* Payment breakdown (Lunas / DP / Belum Dibayar) ------------------------
    Replaces the old inline dot-legend: shows the concrete Rupiah amount,
    the % share of total, and the item count for each status, so the split
    is readable at a glance instead of only on hover over the donut. */

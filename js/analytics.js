@@ -123,10 +123,9 @@
     const timeline = aggregateMonthlyTimeline(events);
     const paymentSummary = computePaymentSummary(events);
     const outstandingRows = aggregateOutstandingList(events, 8);
-    const attention = aggregateNeedsAttention(events);
     return {
       events, priceStats, vendorAgg, vendorBySpending, itemAgg, itemVendorPairs,
-      peakWeekData, peakMonthData, timeline, paymentSummary, outstandingRows, attention,
+      peakWeekData, peakMonthData, timeline, paymentSummary, outstandingRows,
       totalSpending: paymentSummary.committed,
       vendorCount: vendorAgg.length,
     };
@@ -167,10 +166,16 @@
   // hover the donut.
   function renderPaymentLegend(summary) {
     const box = document.getElementById("payment-legend");
-    const total = summary.lunasTotal + summary.dpTotal;
+    const total = summary.lunasTotal + summary.dpPaidTotal + summary.outstanding;
     const rows = [
       ["Lunas", summary.lunasTotal, summary.lunasCount, ACCENT.lunas],
-      ["DP", summary.dpTotal, summary.dpCount, ACCENT.dp],
+      ["DP", summary.dpPaidTotal, summary.dpCount, ACCENT.dp],
+      // "Belum Dibayar" = sisa dari item DP yang belum dibayarkan + item
+      // yang sama sekali belum dibayar, jadi jumlah itemnya adalah
+      // gabungan keduanya (satu item DP bisa ikut dihitung di sini untuk
+      // porsi sisanya, sekaligus di baris "DP" di atas untuk porsi yang
+      // sudah dibayar).
+      ["Belum Dibayar", summary.outstanding, summary.dpCount + summary.belumCount, ACCENT.belum],
     ];
     box.className = "payment-breakdown";
     if (total === 0) {
@@ -223,16 +228,50 @@
     ).join("");
   }
 
-  function renderAttentionList(attention) {
-    const list = document.getElementById("list-attention");
-    if (!attention.overdue.length) {
-      list.innerHTML = '<li class="empty">Tidak ada event yang perlu ditindaklanjuti. 🎉</li>';
-      return;
-    }
-    list.innerHTML = attention.overdue.map((r) =>
-      `<li><span>⚠ ${r.event}<span class="meta">Selesai ${formatDateID(r.eventDateEnd)} · ${r.daysPast} hari lalu${r.stale ? " · DP lama belum diupdate" : ""}</span></span><span class="amount">${formatRupiah(r.outstanding)}</span></li>`
-    ).join("");
+  /* -----------------------------------------------------------------------
+     Status Pembayaran — drill-down per vendor / per event. Independen dari
+     filter tanggal global di atas: hanya memengaruhi donat, legend, dan
+     daftar outstanding di section 06, tidak menyentuh section lain. Opsi
+     dropdown diambil dari seluruh data yang sudah masuk (rawEvents), bukan
+     dari hasil filter tanggal, supaya daftarnya tidak berubah-ubah saat
+     rentang tanggal diganti.
+     ----------------------------------------------------------------------- */
+  const paymentVendorSelect = document.getElementById("payment-filter-vendor");
+  const paymentEventSelect = document.getElementById("payment-filter-event");
+  let currentView = null;
+
+  function populatePaymentFilterOptions(events) {
+    const vendors = [...new Set(events.flatMap((ev) => ev.items.map((it) => it.vendor)).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "id"));
+    const eventNames = [...new Set(events.map((ev) => ev.event).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "id"));
+    paymentVendorSelect.innerHTML = '<option value="">Semua Vendor</option>' +
+      vendors.map((v) => `<option value="${v}">${v}</option>`).join("");
+    paymentEventSelect.innerHTML = '<option value="">Semua Event</option>' +
+      eventNames.map((e) => `<option value="${e}">${e}</option>`).join("");
   }
+  populatePaymentFilterOptions(rawEvents);
+
+  function filterEventsForPayment(events) {
+    const vendorFilter = paymentVendorSelect.value;
+    const eventFilter = paymentEventSelect.value;
+    return events
+      .filter((ev) => !eventFilter || ev.event === eventFilter)
+      .map((ev) => (vendorFilter ? { ...ev, items: ev.items.filter((it) => it.vendor === vendorFilter) } : ev))
+      .filter((ev) => ev.items.length > 0);
+  }
+
+  function renderPaymentSection() {
+    if (!currentView) return;
+    const events = filterEventsForPayment(currentView.events);
+    const summary = computePaymentSummary(events);
+    renderPaymentDonut(document.getElementById("chart-payment"), summary);
+    renderPaymentLegend(summary);
+    renderOutstandingList(aggregateOutstandingList(events, 8));
+  }
+
+  paymentVendorSelect.addEventListener("change", renderPaymentSection);
+  paymentEventSelect.addEventListener("change", renderPaymentSection);
 
   /* -----------------------------------------------------------------------
      Section renderers — dibangun ulang setiap applyFilter() dari `view`
@@ -293,9 +332,7 @@
         renderItemVendorBubbles(document.getElementById("chart-item-vendor"), view.itemVendorPairs);
       },
       "section-payment": () => {
-        renderPaymentDonut(document.getElementById("chart-payment"), view.paymentSummary);
-        renderPaymentLegend(view.paymentSummary);
-        renderOutstandingList(view.outstandingRows);
+        renderPaymentSection();
       },
       "section-time": () => {
         const busiestMonth = [...view.peakMonthData].sort((a, b) => b.count - a.count)[0];
@@ -309,9 +346,6 @@
       },
       "section-trend": () => {
         renderTimeline(document.getElementById("chart-timeline"), view.timeline);
-      },
-      "section-attention": () => {
-        renderAttentionList(view.attention);
       },
     };
   }
@@ -333,6 +367,7 @@
   function applyFilter() {
     const events = filterEventsByDateRange(rawEvents, activeFrom, activeTo);
     const view = computeView(events);
+    currentView = view;
 
     renderHero(view);
     currentRenderers = buildSectionRenderers(view);
