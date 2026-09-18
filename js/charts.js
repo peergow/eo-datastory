@@ -127,10 +127,11 @@ function renderPaymentDonut(container, summary) {
     return;
   }
 
-  const size = 420;
-  const radius = size / 2;
-  const svg = makeSvg(container, size);
-  const g = svg.append("g").attr("transform", `translate(${size / 2},${size / 2})`);
+  const height = 420;
+  const svg = makeSvg(container, height);
+  const width = container.clientWidth || container.getBoundingClientRect().width;
+  const radius = Math.min(width, height) / 2;
+  const g = svg.append("g").attr("transform", `translate(${width / 2},${height / 2})`);
 
   const total = summary.lunasTotal + summary.dpPaidTotal + summary.outstanding;
   const pie = d3.pie().value((d) => d.value).sort(null);
