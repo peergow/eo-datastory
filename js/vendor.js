@@ -1,5 +1,5 @@
 /* =========================================================================
-   vendor.js — logika halaman Pusat Data Vendor & Harga.
+   vendor.js — logika halaman Database (dulu "Pusat Data Vendor & Harga").
    Semua state dibungkus IIFE supaya nama seperti `data`, `render`, atau
    `CONFIG` tidak bentrok dengan js/data.js milik halaman input/analytics.
    ========================================================================= */

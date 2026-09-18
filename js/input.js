@@ -13,7 +13,6 @@
   const submitBtn = document.getElementById("submit-report");
   const formLevelError = document.getElementById("form-level-error");
   const toast = document.getElementById("success-toast");
-  const priceField = document.getElementById("f-price");
 
   let itemSeq = 0;
 
@@ -107,8 +106,6 @@
     return digits ? Number(digits) : NaN;
   }
 
-  attachRupiahFormatting(priceField);
-
   /* ---------------------------------------------------------------------
      Payment status ↔ Nominal DP: only "DP" leaves nominalDP editable.
      "Lunas" derives it automatically (mirrors the normalizePayment_ logic
@@ -155,7 +152,6 @@
     });
     itemsCountEl.textContent = blocks.length;
     noItemsMsg.hidden = blocks.length > 0;
-    recomputeSuggestedEventPrice();
   }
 
   function addItemBlock() {
@@ -170,7 +166,6 @@
 
     const priceInput = node.querySelector('[data-name="totalPrice"]');
     attachRupiahFormatting(priceInput);
-    priceInput.addEventListener("input", recomputeSuggestedEventPrice);
 
     attachPaymentFields(node, priceInput);
     attachItemDictionaryCombo(node);
@@ -219,16 +214,11 @@
   dateEndInput.addEventListener("change", recomputeEventDays);
   grInputEl.addEventListener("input", recomputeEventDays);
 
-  // Suggest the event's total price as the sum of item totals, but never
-  // override a value the user has typed themselves once items exist.
-  let userEditedPrice = false;
-  priceField.addEventListener("input", () => { userEditedPrice = true; });
-
-  function recomputeSuggestedEventPrice() {
-    if (userEditedPrice) return;
-    const total = [...itemsContainer.querySelectorAll('[data-name="totalPrice"]')]
+  // Total harga event tidak lagi diisi manual — dihitung langsung dari
+  // jumlah "Harga total" setiap barang saat laporan disimpan.
+  function computeEventPriceFromItems() {
+    return [...itemsContainer.querySelectorAll('[data-name="totalPrice"]')]
       .reduce((sum, el) => sum + (rupiahValue(el) || 0), 0);
-    priceField.value = total ? total.toLocaleString("id-ID") : "";
   }
 
   /* ---------------------------------------------------------------------
@@ -249,11 +239,6 @@
       if (!input.value.trim()) { setError(fieldEl, "Wajib diisi."); ok = false; }
       else setError(fieldEl, "");
     }
-
-    const priceFieldEl = priceField.closest(".field");
-    const price = rupiahValue(priceField);
-    if (isNaN(price) || price <= 0) { setError(priceFieldEl, "Masukkan angka harga yang valid."); ok = false; }
-    else setError(priceFieldEl, "");
 
     const dateStartFieldEl = dateStartInput.closest(".field");
     const dateEndFieldEl = dateEndInput.closest(".field");
@@ -351,7 +336,7 @@
       user: form.user.value.trim(),
       event: form.event.value.trim(),
       client: form.client.value.trim(),
-      eventPrice: rupiahValue(priceField),
+      eventPrice: computeEventPriceFromItems(),
       eventDate: dateStartInput.value,
       eventDateEnd: dateEndInput.value,
       eventDays: computedEventDays(),
@@ -388,7 +373,6 @@
     form.reset();
     document.getElementById("f-country").value = "Indonesia";
     itemsContainer.innerHTML = "";
-    userEditedPrice = false;
     renumberItems();
     recomputeEventDays();
     form.querySelectorAll(".field").forEach((f) => setError(f, ""));

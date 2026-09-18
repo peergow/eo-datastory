@@ -19,6 +19,27 @@
   const progressRail = document.getElementById("progress-rail");
   const filterBar = document.getElementById("filter-bar");
 
+  /* -------------------------------------------------------------------
+     Keep the filter bar's sticky offset locked to the topnav's real
+     height (css/analytics.css reads it via --topnav-height). The old
+     code hardcoded top:61px, which only approximated the topnav's
+     actual height — any mismatch showed up as the filter bar's
+     buttons sitting a couple pixels closer to (or further from) the
+     topnav's bottom border once the bar became sticky than they did
+     at the top of the page. Measuring the real element removes that
+     gap entirely, in any viewport and after the display font swaps in.
+     ------------------------------------------------------------------- */
+  function syncTopnavHeight() {
+    const topnav = document.querySelector(".topnav");
+    if (!topnav) return;
+    document.documentElement.style.setProperty("--topnav-height", `${topnav.getBoundingClientRect().height}px`);
+  }
+  syncTopnavHeight();
+  window.addEventListener("resize", syncTopnavHeight);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(syncTopnavHeight).catch(() => {});
+  }
+
   let rawEvents;
   try {
     rawEvents = ensurePaymentFields(await loadAllEvents());
@@ -64,8 +85,19 @@
   // section they were looking at in the same spot on screen.
   function withScrollPreserved(fn) {
     const y = window.scrollY;
+    const root = document.documentElement;
+    const prevScrollBehavior = root.style.scrollBehavior;
     fn();
-    requestAnimationFrame(() => window.scrollTo(0, y));
+    requestAnimationFrame(() => {
+      // css/style.css sets `html { scroll-behavior: smooth }` globally, so a
+      // plain window.scrollTo here would animate away from wherever the
+      // click landed before easing back — visibly "moving" the page even
+      // though the person never scrolled. Forcing an instant jump for just
+      // this restore is what actually keeps the position from changing.
+      root.style.scrollBehavior = "auto";
+      window.scrollTo(0, y);
+      root.style.scrollBehavior = prevScrollBehavior;
+    });
   }
 
   presetButtons.forEach((btn) => {
