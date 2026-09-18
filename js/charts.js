@@ -110,10 +110,6 @@ function makeSvg(container, height) {
 function renderPaymentDonut(container, summary) {
   clear(container);
   const TH = themeTokens();
-  const size = 420;
-  const radius = size / 2;
-  const svg = makeSvg(container, size);
-  const g = svg.append("g").attr("transform", `translate(${size / 2},${size / 2})`);
 
   const data = [
     { key: "Lunas", value: summary.lunasTotal, color: ACCENT.lunas },
@@ -122,12 +118,21 @@ function renderPaymentDonut(container, summary) {
   ].filter((d) => d.value > 0);
 
   if (!data.length) {
-    g.append("text").attr("text-anchor", "middle").attr("fill", TH.muted).style("font-size", "0.85rem").text("Belum ada data pembayaran.");
+    // Pesan kosong ditampilkan sebagai teks biasa (bukan SVG 420px)
+    // supaya kartunya tetap kompak dan sejajar dengan kartu "Outstanding
+    // Terbesar" di sebelahnya saat kombinasi filter tidak punya data.
+    d3.select(container).append("div")
+      .attr("class", "chart-empty-msg")
+      .text("Belum ada data pembayaran untuk pilihan ini.");
     return;
   }
 
-  const total = summary.lunasTotal + summary.dpPaidTotal + summary.outstanding;
+  const size = 420;
+  const radius = size / 2;
+  const svg = makeSvg(container, size);
+  const g = svg.append("g").attr("transform", `translate(${size / 2},${size / 2})`);
 
+  const total = summary.lunasTotal + summary.dpPaidTotal + summary.outstanding;
   const pie = d3.pie().value((d) => d.value).sort(null);
   const arc = d3.arc().innerRadius(radius * 0.62).outerRadius(radius - 6);
   const arcHover = d3.arc().innerRadius(radius * 0.62).outerRadius(radius + 4);

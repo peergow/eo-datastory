@@ -245,10 +245,25 @@
       .sort((a, b) => a.localeCompare(b, "id"));
     const eventNames = [...new Set(events.map((ev) => ev.event).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, "id"));
-    paymentVendorSelect.innerHTML = '<option value="">Semua Vendor</option>' +
-      vendors.map((v) => `<option value="${v}">${v}</option>`).join("");
-    paymentEventSelect.innerHTML = '<option value="">Semua Event</option>' +
-      eventNames.map((e) => `<option value="${e}">${e}</option>`).join("");
+    // Dibangun lewat DOM API (bukan string HTML digabung manual) supaya
+    // nama vendor/event yang mengandung karakter seperti " atau & tidak
+    // merusak markup <option> berikutnya — sebelumnya itu bisa membuat
+    // hampir seluruh daftar pilihan gagal ke-parse dengan benar.
+    const fillSelect = (select, defaultLabel, values) => {
+      select.innerHTML = "";
+      const defaultOpt = document.createElement("option");
+      defaultOpt.value = "";
+      defaultOpt.textContent = defaultLabel;
+      select.appendChild(defaultOpt);
+      for (const v of values) {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
+      }
+    };
+    fillSelect(paymentVendorSelect, "Semua Vendor", vendors);
+    fillSelect(paymentEventSelect, "Semua Event", eventNames);
   }
   populatePaymentFilterOptions(rawEvents);
 
