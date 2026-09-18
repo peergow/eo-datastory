@@ -331,7 +331,7 @@
 .payment-chart-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
 }
 .chart-empty-msg {
   width: 100%;
