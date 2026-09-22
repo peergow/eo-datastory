@@ -30,6 +30,22 @@
   max-width: 52ch;
 }
 
+.input-page .page-heading .back-to-list {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--c-itemvendor);
+  text-decoration: none;
+}
+.input-page .page-heading .back-to-list:hover { text-decoration: underline; }
+
+.edit-mode-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
 fieldset.form-section {
   border: none;
   padding: 0;

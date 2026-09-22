@@ -4,6 +4,12 @@ Aplikasi web untuk (1) mencatat laporan event secara terstruktur dan (2)
 membaca data event tersebut sebagai visual essay interaktif — bukan
 dashboard korporat biasa.
 
+> **Revisi terbaru** (fitur Edit Laporan, status pembayaran Lunas/DP yang
+> benar-benar tersimpan, perbaikan bug login, dan percepatan loading):
+> lihat **`SETUP_FIX.md`** bagian "REVISI: Fitur Edit Laporan + Perbaikan
+> Login/Performa" untuk langkah setup yang WAJIB dilakukan (kolom baru di
+> sheet `ITEMS` + deploy ulang Apps Script).
+
 ## Struktur folder
 
 ```

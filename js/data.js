@@ -520,28 +520,82 @@ async function loadAllEvents() {
   return [...SAMPLE_EVENTS, ...readLocalSubmissions()];
 }
 
+// Daftar event ringkas (tanpa detail item) untuk halaman events.html
+// ("Daftar Event"). Lebih cepat daripada loadAllEvents() saat memakai
+// backend Apps Script karena action=getEventsList tidak mengirim seluruh
+// baris ITEMS ke browser — hanya info yang perlu ditampilkan di daftar.
+async function loadEventsList() {
+  if (CONFIG.API_URL) {
+    const res = await fetch(CONFIG.API_URL + "?action=getEventsList");
+    if (!res.ok) throw new Error("Failed to load event list from API: " + res.status);
+    const payload = await res.json();
+    return payload.events || [];
+  }
+  const events = [...SAMPLE_EVENTS, ...readLocalSubmissions()];
+  return events.map((ev) => ({
+    eventId: ev.eventId,
+    event: ev.event,
+    client: ev.client,
+    city: ev.city,
+    country: ev.country,
+    eventDate: ev.eventDate,
+    eventDays: ev.eventDays,
+    eventPrice: ev.eventPrice,
+    submittedAt: ev.submittedAt,
+    itemCount: (ev.items || []).length,
+  }));
+}
+
+// Satu event lengkap (dengan item) berdasarkan eventId — dipakai untuk
+// mengisi ulang form input.html saat tombol "Edit" diklik. `isLocal` pada
+// hasilnya menandai event ini hanya ada di localStorage browser ini (mode
+// demo tanpa backend), supaya UI bisa memberi tahu kalau event contoh
+// (SAMPLE_EVENTS) tidak bisa diedit.
+async function loadEventById(eventId) {
+  if (CONFIG.API_URL) {
+    const res = await fetch(CONFIG.API_URL + "?action=getEventById&eventId=" + encodeURIComponent(eventId));
+    if (!res.ok) throw new Error("Failed to load event from API: " + res.status);
+    const payload = await res.json();
+    if (!payload.ok) throw new Error(payload.error || "Event tidak ditemukan.");
+    return payload.event;
+  }
+  const local = readLocalSubmissions();
+  const found = local.find((ev) => ev.eventId === eventId);
+  if (found) return found;
+  const sample = SAMPLE_EVENTS.find((ev) => ev.eventId === eventId);
+  if (sample) {
+    const err = new Error("Event contoh (sample) tidak bisa diedit dalam mode demo.");
+    err.isSampleEvent = true;
+    throw err;
+  }
+  throw new Error("Event tidak ditemukan.");
+}
+
+// Menimpa satu laporan yang sudah ada di localStorage (mode demo tanpa
+// backend) — dipakai oleh submitEvent() saat report.isEdit=true.
+function updateLocalSubmission(report) {
+  const all = readLocalSubmissions();
+  const idx = all.findIndex((ev) => ev.eventId === report.eventId);
+  if (idx === -1) throw new Error("Event tidak ditemukan di penyimpanan lokal.");
+  all[idx] = report;
+  localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(all));
+}
+
 // Loads the item & vendor dictionaries that power the searchable dropdowns
 // in input.html. Same local-vs-API split as loadAllEvents(): falls back to
 // the bundled arrays above when no backend is configured, so the dropdowns
 // still work in "run locally" mode.
 let _dictionariesCache = null;
+// REVISI (PERFORMA): sebelumnya fungsi ini SELALU memanggil
+// ?action=getDictionaries ke Apps Script terlebih dahulu — padahal Code.gs
+// (lihat komentar di doGet) memang SENGAJA selalu membalasnya dengan
+// items:[] / vendors:[] (dictionary tidak dibuat di sheet). Jadi setiap
+// buka input.html menunggu satu round-trip Apps Script (bisa beberapa
+// detik karena cold start) hanya untuk hasil yang pasti dibuang dan diganti
+// data bundled ini. Sekarang langsung pakai data bundled tanpa fetch sama
+// sekali, supaya "Memuat Data Master" tidak lagi menunggu jaringan.
 async function loadDictionaries() {
   if (_dictionariesCache) return _dictionariesCache;
-
-  if (CONFIG.API_URL) {
-    try {
-      const res = await fetch(CONFIG.API_URL + "?action=getDictionaries");
-      if (!res.ok) throw new Error("Failed to load dictionaries from API: " + res.status);
-      const payload = await res.json();
-      _dictionariesCache = {
-        items: payload.items && payload.items.length ? payload.items : ITEM_DICTIONARY_BUNDLED,
-        vendors: payload.vendors && payload.vendors.length ? payload.vendors : VENDOR_DICTIONARY_BUNDLED,
-      };
-      return _dictionariesCache;
-    } catch (e) {
-      console.error("Failed to load dictionaries from API, falling back to bundled data.", e);
-    }
-  }
   _dictionariesCache = { items: ITEM_DICTIONARY_BUNDLED, vendors: VENDOR_DICTIONARY_BUNDLED };
   return _dictionariesCache;
 }
@@ -559,6 +613,10 @@ async function submitEvent(report) {
       throw new Error(payload.error || "Backend menolak data.");
     }
     return payload;
+  }
+  if (report.isEdit) {
+    updateLocalSubmission(report);
+    return { ok: true, eventId: report.eventId, updated: true };
   }
   writeLocalSubmission(report);
   return { ok: true, eventId: report.eventId };

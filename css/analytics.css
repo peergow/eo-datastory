@@ -12,12 +12,7 @@
 
 .filter-bar {
   position: sticky;
-  /* Diset dari JS (lihat syncTopnavHeight di js/analytics.js) ke tinggi
-     .topnav yang sesungguhnya, supaya jarak filter-bar (dan tombol di
-     dalamnya) ke garis tepi bawah topnav selalu presisi sama — baik di
-     posisi awal (belum sticky) maupun setelah nempel di atas saat
-     discroll. 61px hanya fallback kalau JS-nya belum sempat jalan. */
-  top: var(--topnav-height, 61px);
+  top: 61px; /* tinggi .topnav yang sebenarnya di style.css */
   z-index: 35;
   background: color-mix(in srgb, var(--paper) 94%, transparent);
   backdrop-filter: blur(6px);

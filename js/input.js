@@ -13,6 +13,30 @@
   const submitBtn = document.getElementById("submit-report");
   const formLevelError = document.getElementById("form-level-error");
   const toast = document.getElementById("success-toast");
+  const priceField = document.getElementById("f-price");
+
+  // ---- Mode Edit (?edit=<eventId>) ----------------------------------------
+  // Dipakai saat pengguna klik "Edit" di events.html: form ini dimuat ulang
+  // dengan data event yang sudah ada, lalu submit akan MENGUPDATE event itu
+  // (bukan membuat baris baru) lewat report.isEdit = true di submitEvent().
+  const urlParams = new URLSearchParams(window.location.search);
+  const editEventId = urlParams.get("edit");
+  let editOriginalEvent = null;
+
+  const pageEyebrow = document.getElementById("page-eyebrow");
+  const pageTitle = document.getElementById("page-title");
+  const pageDesc = document.getElementById("page-desc");
+  const backToList = document.getElementById("back-to-list");
+  const editModeNote = document.getElementById("edit-mode-note");
+
+  if (editEventId) {
+    pageEyebrow.textContent = "EDIT LAPORAN EVENT";
+    pageTitle.textContent = "Edit detail event";
+    pageDesc.textContent = "Perbaiki data yang salah, atau ubah status pembayaran (mis. DP → Lunas), lalu simpan perubahan.";
+    backToList.hidden = false;
+    editModeNote.hidden = false;
+    submitBtn.textContent = "Update Report";
+  }
 
   let itemSeq = 0;
 
@@ -20,17 +44,33 @@
      Item & vendor dictionaries — power the Item ID / Vendor dropdown-search
      fields. Loaded once on page load; every item block wires its own
      combobox against these same arrays (see attachItemDictionaryCombo /
-     attachVendorCombo below).
+     attachVendorCombo below). When editing, the existing event's data is
+     loaded in parallel and the form is prefilled once both are ready.
      --------------------------------------------------------------------- */
   let itemDictionary = [];
   let vendorDictionary = [];
 
-  MaximumLoader.show("Memuat Data Master");
-  loadDictionaries().then((dicts) => {
+  MaximumLoader.show(editEventId ? "Memuat Data Event" : "Memuat Data Master");
+  Promise.all([
+    loadDictionaries(),
+    editEventId ? loadEventById(editEventId) : Promise.resolve(null),
+  ]).then(([dicts, ev]) => {
     itemDictionary = dicts.items;
     vendorDictionary = dicts.vendors;
+
+    if (editEventId) {
+      if (!ev) throw new Error("Event tidak ditemukan.");
+      editOriginalEvent = ev;
+      populateFormForEdit(ev);
+    } else {
+      addItemBlock();
+    }
   }).catch((err) => {
-    console.error("Failed to load item/vendor dictionaries", err);
+    console.error("Failed to load data master / event to edit", err);
+    if (editEventId) {
+      formLevelError.textContent = (err && err.message) || "Gagal memuat data event untuk diedit.";
+      submitBtn.disabled = true;
+    }
   }).finally(() => {
     MaximumLoader.hide();
   });
@@ -106,6 +146,8 @@
     return digits ? Number(digits) : NaN;
   }
 
+  attachRupiahFormatting(priceField);
+
   /* ---------------------------------------------------------------------
      Payment status ↔ Nominal DP: only "DP" leaves nominalDP editable.
      "Lunas" derives it automatically (mirrors the normalizePayment_ logic
@@ -152,9 +194,10 @@
     });
     itemsCountEl.textContent = blocks.length;
     noItemsMsg.hidden = blocks.length > 0;
+    recomputeSuggestedEventPrice();
   }
 
-  function addItemBlock() {
+  function addItemBlock(prefill) {
     itemSeq += 1;
     const node = itemTemplate.content.firstElementChild.cloneNode(true);
     node.dataset.seq = itemSeq;
@@ -166,14 +209,82 @@
 
     const priceInput = node.querySelector('[data-name="totalPrice"]');
     attachRupiahFormatting(priceInput);
+    priceInput.addEventListener("input", recomputeSuggestedEventPrice);
 
     attachPaymentFields(node, priceInput);
     attachItemDictionaryCombo(node);
     attachVendorCombo(node);
 
     itemsContainer.appendChild(node);
+    if (prefill) fillItemBlock(node, prefill);
     renumberItems();
     return node;
+  }
+
+  // Mengisi satu blok barang dengan data yang sudah ada (mode edit), lalu
+  // memicu event input/change yang relevan supaya formatting Rupiah,
+  // status pembayaran, dan tampilan "Sisa DP" ikut ter-sinkron seolah-olah
+  // pengguna sendiri yang mengetiknya.
+  function fillItemBlock(node, item) {
+    node.querySelector('[data-name="itemCode"]').value = item.itemCode || "";
+    node.querySelector('[data-name="itemName"]').value = item.itemName || "";
+
+    const categorySelect = node.querySelector('[data-name="category"]');
+    if ([...categorySelect.options].some((o) => o.value === item.category)) {
+      categorySelect.value = item.category;
+    }
+
+    node.querySelector('[data-name="vendor"]').value = item.vendor || "";
+    node.querySelector('[data-name="description"]').value = item.description || "";
+
+    const priceInput = node.querySelector('[data-name="totalPrice"]');
+    priceInput.value = item.totalPrice ? Number(item.totalPrice).toLocaleString("id-ID") : "";
+
+    const statusSelect = node.querySelector('[data-name="paymentStatus"]');
+    // Data lama (sebelum revisi ini) mungkin belum punya paymentStatus sama
+    // sekali — dibiarkan kosong ("Pilih status") supaya pengguna mengisinya
+    // secara sadar, bukan ditebak.
+    if (item.paymentStatus === "Lunas" || item.paymentStatus === "DP") {
+      statusSelect.value = item.paymentStatus;
+    }
+    statusSelect.dispatchEvent(new Event("change"));
+
+    if (item.paymentStatus === "DP") {
+      const dpInput = node.querySelector('[data-name="nominalDP"]');
+      dpInput.value = Number(item.nominalDP || 0).toLocaleString("id-ID");
+      dpInput.dispatchEvent(new Event("input"));
+    }
+  }
+
+  // Mengisi seluruh form (bagian atas + semua blok barang) dari satu event
+  // yang sudah ada, dipanggil sekali saat halaman dibuka dengan ?edit=...
+  function populateFormForEdit(ev) {
+    form.user.value = ev.user || "";
+    form.event.value = ev.event || "";
+    form.client.value = ev.client || "";
+    form.city.value = ev.city || "";
+    form.country.value = ev.country || "Indonesia";
+    grInputEl.value = Number.isFinite(ev.gr) ? ev.gr : 0;
+
+    priceField.value = ev.eventPrice ? Number(ev.eventPrice).toLocaleString("id-ID") : "";
+    userEditedPrice = true; // jangan timpa total harga yang sudah tersimpan hanya karena barang diedit
+
+    dateStartInput.value = ev.eventDate || "";
+    if (ev.eventDateEnd) {
+      dateEndInput.value = ev.eventDateEnd;
+    } else if (ev.eventDate && ev.eventDays) {
+      // Sheet EVENTS hanya menyimpan tanggal mulai + jumlah hari, bukan
+      // tanggal selesai — turunkan kembali dengan rumus yang sama seperti
+      // saat pertama kali dihitung (lihat computedEventDays()).
+      const end = new Date(ev.eventDate + "T00:00:00");
+      end.setDate(end.getDate() + (Number(ev.eventDays) - 1));
+      dateEndInput.value = end.toISOString().slice(0, 10);
+    }
+    recomputeEventDays();
+
+    itemsContainer.innerHTML = "";
+    (ev.items || []).forEach((item) => addItemBlock(item));
+    if ((ev.items || []).length === 0) addItemBlock();
   }
 
   addItemBtn.addEventListener("click", () => addItemBlock());
@@ -214,11 +325,16 @@
   dateEndInput.addEventListener("change", recomputeEventDays);
   grInputEl.addEventListener("input", recomputeEventDays);
 
-  // Total harga event tidak lagi diisi manual — dihitung langsung dari
-  // jumlah "Harga total" setiap barang saat laporan disimpan.
-  function computeEventPriceFromItems() {
-    return [...itemsContainer.querySelectorAll('[data-name="totalPrice"]')]
+  // Suggest the event's total price as the sum of item totals, but never
+  // override a value the user has typed themselves once items exist.
+  let userEditedPrice = false;
+  priceField.addEventListener("input", () => { userEditedPrice = true; });
+
+  function recomputeSuggestedEventPrice() {
+    if (userEditedPrice) return;
+    const total = [...itemsContainer.querySelectorAll('[data-name="totalPrice"]')]
       .reduce((sum, el) => sum + (rupiahValue(el) || 0), 0);
+    priceField.value = total ? total.toLocaleString("id-ID") : "";
   }
 
   /* ---------------------------------------------------------------------
@@ -239,6 +355,11 @@
       if (!input.value.trim()) { setError(fieldEl, "Wajib diisi."); ok = false; }
       else setError(fieldEl, "");
     }
+
+    const priceFieldEl = priceField.closest(".field");
+    const price = rupiahValue(priceField);
+    if (isNaN(price) || price <= 0) { setError(priceFieldEl, "Masukkan angka harga yang valid."); ok = false; }
+    else setError(priceFieldEl, "");
 
     const dateStartFieldEl = dateStartInput.closest(".field");
     const dateEndFieldEl = dateEndInput.closest(".field");
@@ -329,14 +450,23 @@
       totalPrice: rupiahValue(block.querySelector('[data-name="totalPrice"]')),
       paymentStatus: block.querySelector('[data-name="paymentStatus"]').value,
       nominalDP: rupiahValue(block.querySelector('[data-name="nominalDP"]')) || 0,
+      // REVISI: form ini tidak punya field kuantitas per barang (satu blok
+      // = satu baris item dengan harga totalnya sendiri), tapi backend
+      // (Code.gs validateReport_) mewajibkan quantity berupa angka > 0 —
+      // tanpa ini SETIAP submit selalu ditolak. Default 1 per baris.
+      quantity: 1,
     }));
 
     const report = {
-      eventId: "", // dibuat otomatis oleh backend dengan format bulan-ke-event-ke-tahun
+      // Mode edit: pakai eventId yang sudah ada supaya backend meng-update
+      // baris yang sama, bukan membuat event baru. Mode create: dibuat
+      // otomatis oleh backend dengan format bulan-ke-event-ke-tahun.
+      eventId: editEventId || "",
+      isEdit: !!editEventId,
       user: form.user.value.trim(),
       event: form.event.value.trim(),
       client: form.client.value.trim(),
-      eventPrice: computeEventPriceFromItems(),
+      eventPrice: rupiahValue(priceField),
       eventDate: dateStartInput.value,
       eventDateEnd: dateEndInput.value,
       eventDays: computedEventDays(),
@@ -348,19 +478,28 @@
     };
 
     submitBtn.disabled = true;
-    submitBtn.textContent = "Menyimpan…";
+    submitBtn.textContent = editEventId ? "Menyimpan Perubahan…" : "Menyimpan…";
     MaximumLoader.show("Menyimpan Laporan");
     try {
       await submitEvent(report);
+      if (editEventId) {
+        MaximumLoader.setLabel("Tersimpan — Kembali ke Daftar Event");
+        setTimeout(() => { window.location.href = "events.html"; }, 700);
+        return; // biarkan loader tampil sampai redirect
+      }
       showSuccess();
       resetForm();
     } catch (err) {
       console.error(err);
-      formLevelError.textContent = "Gagal menyimpan laporan. Silakan coba lagi.";
+      formLevelError.textContent = editEventId
+        ? "Gagal menyimpan perubahan. Silakan coba lagi."
+        : "Gagal menyimpan laporan. Silakan coba lagi.";
     } finally {
-      MaximumLoader.hide();
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Submit Report";
+      if (!editEventId) {
+        MaximumLoader.hide();
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Report";
+      }
     }
   });
 
@@ -373,11 +512,14 @@
     form.reset();
     document.getElementById("f-country").value = "Indonesia";
     itemsContainer.innerHTML = "";
+    userEditedPrice = false;
     renumberItems();
     recomputeEventDays();
     form.querySelectorAll(".field").forEach((f) => setError(f, ""));
   }
 
-  // Start with one empty item block for convenience.
-  addItemBlock();
+  // Blok barang kosong pertama ditambahkan lewat Promise.all(...) di atas
+  // (baik untuk mode create maupun setelah data event mode edit termuat) —
+  // jangan tambahkan lagi di sini, supaya tidak dobel / muncul sebelum
+  // data edit selesai dimuat.
 })();

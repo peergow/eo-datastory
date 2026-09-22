@@ -66,12 +66,15 @@
         try {
           sessionStorage.setItem(AUTH_CONFIG.SESSION_KEY, data.username || username);
         } catch (_) {}
-        // Splash 3 detik sebelum masuk ke halaman utama.
+        // REVISI: delay splash sebelumnya 3000ms (fix, tidak tergantung
+        // kecepatan server) — salah satu penyebab login "terasa lama" di
+        // atas waktu respons Apps Script itu sendiri. Dipersingkat jadi
+        // transisi singkat saja.
         MaximumLoader.setLabel("Harap Tunggu");
         setTimeout(function () {
           window.location.href = "index.html";
-        }, 3000);
-        return; // jangan matikan loader / tombol, biar splash-nya utuh
+        }, 400);
+        return; // jangan matikan loader / tombol, biar transisinya mulus
       }
 
       MaximumLoader.hide();
