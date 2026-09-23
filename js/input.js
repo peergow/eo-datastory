@@ -13,7 +13,6 @@
   const submitBtn = document.getElementById("submit-report");
   const formLevelError = document.getElementById("form-level-error");
   const toast = document.getElementById("success-toast");
-  const priceField = document.getElementById("f-price");
 
   // ---- Mode Edit (?edit=<eventId>) ----------------------------------------
   // Dipakai saat pengguna klik "Edit" di events.html: form ini dimuat ulang
@@ -53,7 +52,9 @@
   MaximumLoader.show(editEventId ? "Memuat Data Event" : "Memuat Data Master");
   Promise.all([
     loadDictionaries(),
-    editEventId ? loadEventById(editEventId) : Promise.resolve(null),
+    editEventId ? loadEventById(editEventId, (attempt, attempts) => {
+      MaximumLoader.setLabel(`Masih memuat data event, mencoba lagi… (${attempt}/${attempts})`);
+    }) : Promise.resolve(null),
   ]).then(([dicts, ev]) => {
     itemDictionary = dicts.items;
     vendorDictionary = dicts.vendors;
@@ -146,8 +147,6 @@
     return digits ? Number(digits) : NaN;
   }
 
-  attachRupiahFormatting(priceField);
-
   /* ---------------------------------------------------------------------
      Payment status ↔ Nominal DP: only "DP" leaves nominalDP editable.
      "Lunas" derives it automatically (mirrors the normalizePayment_ logic
@@ -194,7 +193,6 @@
     });
     itemsCountEl.textContent = blocks.length;
     noItemsMsg.hidden = blocks.length > 0;
-    recomputeSuggestedEventPrice();
   }
 
   function addItemBlock(prefill) {
@@ -209,7 +207,6 @@
 
     const priceInput = node.querySelector('[data-name="totalPrice"]');
     attachRupiahFormatting(priceInput);
-    priceInput.addEventListener("input", recomputeSuggestedEventPrice);
 
     attachPaymentFields(node, priceInput);
     attachItemDictionaryCombo(node);
@@ -265,9 +262,6 @@
     form.city.value = ev.city || "";
     form.country.value = ev.country || "Indonesia";
     grInputEl.value = Number.isFinite(ev.gr) ? ev.gr : 0;
-
-    priceField.value = ev.eventPrice ? Number(ev.eventPrice).toLocaleString("id-ID") : "";
-    userEditedPrice = true; // jangan timpa total harga yang sudah tersimpan hanya karena barang diedit
 
     dateStartInput.value = ev.eventDate || "";
     if (ev.eventDateEnd) {
@@ -325,16 +319,12 @@
   dateEndInput.addEventListener("change", recomputeEventDays);
   grInputEl.addEventListener("input", recomputeEventDays);
 
-  // Suggest the event's total price as the sum of item totals, but never
-  // override a value the user has typed themselves once items exist.
-  let userEditedPrice = false;
-  priceField.addEventListener("input", () => { userEditedPrice = true; });
-
-  function recomputeSuggestedEventPrice() {
-    if (userEditedPrice) return;
-    const total = [...itemsContainer.querySelectorAll('[data-name="totalPrice"]')]
+  // Total harga event is no longer a separate editable field — it's always
+  // the sum of each item's own "Harga total", computed once at submit time
+  // (see form submit handler below).
+  function computeTotalEventPrice() {
+    return [...itemsContainer.querySelectorAll('[data-name="totalPrice"]')]
       .reduce((sum, el) => sum + (rupiahValue(el) || 0), 0);
-    priceField.value = total ? total.toLocaleString("id-ID") : "";
   }
 
   /* ---------------------------------------------------------------------
@@ -355,11 +345,6 @@
       if (!input.value.trim()) { setError(fieldEl, "Wajib diisi."); ok = false; }
       else setError(fieldEl, "");
     }
-
-    const priceFieldEl = priceField.closest(".field");
-    const price = rupiahValue(priceField);
-    if (isNaN(price) || price <= 0) { setError(priceFieldEl, "Masukkan angka harga yang valid."); ok = false; }
-    else setError(priceFieldEl, "");
 
     const dateStartFieldEl = dateStartInput.closest(".field");
     const dateEndFieldEl = dateEndInput.closest(".field");
@@ -466,7 +451,7 @@
       user: form.user.value.trim(),
       event: form.event.value.trim(),
       client: form.client.value.trim(),
-      eventPrice: rupiahValue(priceField),
+      eventPrice: computeTotalEventPrice(),
       eventDate: dateStartInput.value,
       eventDateEnd: dateEndInput.value,
       eventDays: computedEventDays(),
@@ -512,7 +497,6 @@
     form.reset();
     document.getElementById("f-country").value = "Indonesia";
     itemsContainer.innerHTML = "";
-    userEditedPrice = false;
     renumberItems();
     recomputeEventDays();
     form.querySelectorAll(".field").forEach((f) => setError(f, ""));

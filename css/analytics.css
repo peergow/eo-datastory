@@ -12,7 +12,7 @@
 
 .filter-bar {
   position: sticky;
-  top: 61px; /* tinggi .topnav yang sebenarnya di style.css */
+  top: var(--topnav-h, 61px); /* diukur & disinkronkan oleh js/analytics.js supaya selalu pas dengan tinggi .topnav yang sebenarnya, bukan tebakan tetap */
   z-index: 35;
   background: color-mix(in srgb, var(--paper) 94%, transparent);
   backdrop-filter: blur(6px);
@@ -78,6 +78,13 @@
   margin-top: 8px;
   font-size: 0.78rem;
   color: var(--muted);
+  /* Text length varies a lot between presets ("Menampilkan seluruh data."
+     vs. a long custom-range sentence with an event count). Without a
+     floor, a shorter line shrinks the filter bar itself and the buttons
+     above it end up a couple pixels higher than on the previous preset —
+     reserving room for two lines up front keeps the bar's height, and so
+     the buttons' position, identical no matter which preset is active. */
+  min-height: calc(0.78rem * 1.5 * 2);
 }
 @media (max-width: 700px) {
   .filter-bar { position: static; }

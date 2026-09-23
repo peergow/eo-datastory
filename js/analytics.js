@@ -21,7 +21,10 @@
 
   let rawEvents;
   try {
-    rawEvents = ensurePaymentFields(await loadAllEvents());
+    rawEvents = ensurePaymentFields(await loadAllEvents((attempt, attempts) => {
+      const labelEl = loadingState.querySelector(".mx-label");
+      if (labelEl) labelEl.textContent = `Masih memuat, mencoba lagi… (${attempt}/${attempts})`;
+    }));
   } catch (err) {
     console.error(err);
     loadingState.innerHTML = "<p>Gagal memuat data. Periksa koneksi atau konfigurasi API_URL di js/data.js.</p>";
@@ -98,15 +101,48 @@
     });
   });
 
-  // The filter bar sits sticky right under the topnav; a small shadow
-  // makes it read as a floating panel once it's actually pinned there,
-  // instead of looking fused to the nav while the page is scrolled.
-  if (filterBarSentinel) {
-    new IntersectionObserver(
-      ([entry]) => filterBar.classList.toggle("is-stuck", !entry.isIntersecting),
-      { threshold: 0, rootMargin: "-61px 0px 0px 0px" }
-    ).observe(filterBarSentinel);
+  // The filter bar sticks right under the topnav (top: var(--topnav-h)).
+  // That offset used to be a hard-coded "61px" guess, which only matched
+  // the topnav's *actual* rendered height by luck — any mismatch (a font
+  // swap once the webfont finishes loading, a resize, the brand text
+  // wrapping) left a gap that was a few pixels different before vs. after
+  // scrolling, which read as the buttons "moving". Measuring the real
+  // height and re-measuring on the events that can change it keeps the
+  // gap between the buttons and the topnav identical in every state.
+  const topnavEl = document.querySelector(".topnav");
+  function syncTopnavHeight() {
+    if (!topnavEl) return 61;
+    const h = Math.round(topnavEl.getBoundingClientRect().height);
+    document.documentElement.style.setProperty("--topnav-h", h + "px");
+    return h;
   }
+  let topnavH = syncTopnavHeight();
+  let stickyObserver = null;
+  function rebuildStickyObserver() {
+    if (!filterBarSentinel) return;
+    if (stickyObserver) stickyObserver.disconnect();
+    stickyObserver = new IntersectionObserver(
+      ([entry]) => filterBar.classList.toggle("is-stuck", !entry.isIntersecting),
+      { threshold: 0, rootMargin: `-${topnavH}px 0px 0px 0px` }
+    );
+    stickyObserver.observe(filterBarSentinel);
+  }
+  rebuildStickyObserver();
+  window.addEventListener("resize", () => {
+    const h = syncTopnavHeight();
+    if (h !== topnavH) { topnavH = h; rebuildStickyObserver(); }
+  });
+  // Web fonts (Fraunces/Space Grotesk) can swap in after first paint and
+  // change the topnav's height slightly — re-measure once they're ready
+  // so the very first render already matches the post-scroll state.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      const h = syncTopnavHeight();
+      if (h !== topnavH) { topnavH = h; rebuildStickyObserver(); }
+    });
+  }
+
+
 
   /* -----------------------------------------------------------------------
      computeView — the single place that turns a list of events into every

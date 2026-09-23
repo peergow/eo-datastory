@@ -506,15 +506,40 @@ function writeLocalSubmission(report) {
   localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(all));
 }
 
+// Apps Script web apps take a slow "cold start" round-trip (or even a
+// dropped request) the first time they're hit after a while — every read
+// below retries a few times with a short backoff before giving up, which
+// is what actually fixes the "works on refresh" symptom instead of just
+// wording the error message better. `onRetry(attempt, attempts)` is an
+// optional hook so the caller's loading UI can say something while this
+// happens, instead of sitting on the first label the whole time.
+async function apiFetchJSON(url, options, onRetry) {
+  const attempts = 3;
+  const baseDelayMs = 900;
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, options);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return await res.json();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        if (onRetry) { try { onRetry(i + 2, attempts); } catch (_) {} }
+        await new Promise((resolve) => setTimeout(resolve, baseDelayMs * (i + 1)));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 // Loads the full dataset. In local/demo mode this is the bundled sample
 // data plus anything the user has submitted through input.html in this
 // browser. When CONFIG.API_URL is set, it fetches from the Apps Script
 // backend instead.
-async function loadAllEvents() {
+async function loadAllEvents(onRetry) {
   if (CONFIG.API_URL) {
-    const res = await fetch(CONFIG.API_URL + "?action=getAnalytics");
-    if (!res.ok) throw new Error("Failed to load data from API: " + res.status);
-    const payload = await res.json();
+    const payload = await apiFetchJSON(CONFIG.API_URL + "?action=getAnalytics", undefined, onRetry);
     return payload.events || [];
   }
   return [...SAMPLE_EVENTS, ...readLocalSubmissions()];
@@ -524,11 +549,9 @@ async function loadAllEvents() {
 // ("Daftar Event"). Lebih cepat daripada loadAllEvents() saat memakai
 // backend Apps Script karena action=getEventsList tidak mengirim seluruh
 // baris ITEMS ke browser — hanya info yang perlu ditampilkan di daftar.
-async function loadEventsList() {
+async function loadEventsList(onRetry) {
   if (CONFIG.API_URL) {
-    const res = await fetch(CONFIG.API_URL + "?action=getEventsList");
-    if (!res.ok) throw new Error("Failed to load event list from API: " + res.status);
-    const payload = await res.json();
+    const payload = await apiFetchJSON(CONFIG.API_URL + "?action=getEventsList", undefined, onRetry);
     return payload.events || [];
   }
   const events = [...SAMPLE_EVENTS, ...readLocalSubmissions()];
@@ -551,11 +574,9 @@ async function loadEventsList() {
 // hasilnya menandai event ini hanya ada di localStorage browser ini (mode
 // demo tanpa backend), supaya UI bisa memberi tahu kalau event contoh
 // (SAMPLE_EVENTS) tidak bisa diedit.
-async function loadEventById(eventId) {
+async function loadEventById(eventId, onRetry) {
   if (CONFIG.API_URL) {
-    const res = await fetch(CONFIG.API_URL + "?action=getEventById&eventId=" + encodeURIComponent(eventId));
-    if (!res.ok) throw new Error("Failed to load event from API: " + res.status);
-    const payload = await res.json();
+    const payload = await apiFetchJSON(CONFIG.API_URL + "?action=getEventById&eventId=" + encodeURIComponent(eventId), undefined, onRetry);
     if (!payload.ok) throw new Error(payload.error || "Event tidak ditemukan.");
     return payload.event;
   }

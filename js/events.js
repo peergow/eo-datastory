@@ -56,7 +56,10 @@
 
   (async function init() {
     try {
-      allEvents = await loadEventsList();
+      allEvents = await loadEventsList((attempt, attempts) => {
+        const labelEl = loadingEl.querySelector(".mx-label");
+        if (labelEl) labelEl.textContent = `Masih memuat, mencoba lagi… (${attempt}/${attempts})`;
+      });
       loadingEl.hidden = true;
       if (allEvents.length === 0) {
         emptyEl.hidden = false;
