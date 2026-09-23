@@ -2,14 +2,10 @@
  * Code.gs — Google Apps Script backend for MAXIMUM THE ULTIMATE.
  *
  * IMPORTANT:
- * - Data laporan (EVENTS/ITEMS) ditulis HANYA ke sheet `EVENTS` dan `ITEMS`.
- * - REVISI (dictionary live sync): `ITEM_DICTIONARY` dan `VENDOR_DICTIONARY`
- *   sekarang DIBUAT & DIBACA dari spreadsheet yang sama (lihat
- *   ensureDictionarySheets_ / getDictionariesCached_ di bawah), supaya
- *   Kategori & Nama Vendor di form Input Report bisa diedit langsung dari
- *   spreadsheet tanpa perlu redeploy Code.gs. Array bundled di js/data.js
- *   tetap ada, tapi sekarang HANYA dipakai sebagai fallback (mode demo
- *   tanpa backend, atau kalau fetch ke Apps Script gagal).
+ * - Data is written ONLY to the existing `EVENTS` and `ITEMS` sheets.
+ * - ITEM_DICTIONARY and VENDOR_DICTIONARY are NOT created here.
+ * - The website uses the bundled dictionary data generated from the supplied
+ *   Item_Dictionary.xlsx and Vendor_Dictionary.xlsx files.
  *
  * REVISI: fitur Edit Laporan + penyimpanan Status Pembayaran (Lunas/DP) +
  * caching supaya "Analytics" & "Daftar Event" tidak selalu membaca ulang
@@ -21,11 +17,6 @@
 const SPREADSHEET_ID = "PASTE_YOUR_SPREADSHEET_ID_HERE";
 const EVENTS_SHEET_NAME = "EVENTS";
 const ITEMS_SHEET_NAME = "ITEMS";
-const ITEM_DICTIONARY_SHEET_NAME = "ITEM_DICTIONARY";
-const VENDOR_DICTIONARY_SHEET_NAME = "VENDOR_DICTIONARY";
-
-const ITEM_DICTIONARY_HEADERS = ["ITEM ID", "KATEGORI", "NAMA ITEM STANDAR", "SATUAN STANDAR"];
-const VENDOR_DICTIONARY_HEADERS = ["VENDOR ID", "NAMA VENDOR", "KATEGORI LAYANAN"];
 
 const EVENTS_HEADERS = [
   "EVENT ID", "USER", "EVENT NAME", "CLIENT", "EVENT PRICE", "EVENT DATE",
@@ -59,39 +50,13 @@ function ensureSheets_() {
   return { eventsSheet, itemsSheet };
 }
 
-// Membuat sheet ITEM_DICTIONARY / VENDOR_DICTIONARY kalau belum ada (hanya
-// header, tanpa data) supaya Anda tinggal mengisi/mengimpor barisnya. Kalau
-// sheetnya sudah ada, dibiarkan apa adanya (tidak menimpa data yang sudah
-// Anda isi).
-function ensureDictionarySheets_() {
-  const ss = ss_();
-  let itemDictSheet = ss.getSheetByName(ITEM_DICTIONARY_SHEET_NAME);
-  if (!itemDictSheet) {
-    itemDictSheet = ss.insertSheet(ITEM_DICTIONARY_SHEET_NAME);
-    itemDictSheet.appendRow(ITEM_DICTIONARY_HEADERS);
-    itemDictSheet.setFrozenRows(1);
-  }
-  let vendorDictSheet = ss.getSheetByName(VENDOR_DICTIONARY_SHEET_NAME);
-  if (!vendorDictSheet) {
-    vendorDictSheet = ss.insertSheet(VENDOR_DICTIONARY_SHEET_NAME);
-    vendorDictSheet.appendRow(VENDOR_DICTIONARY_HEADERS);
-    vendorDictSheet.setFrozenRows(1);
-  }
-  return { itemDictSheet, vendorDictSheet };
-}
-
 function setup() {
   const { eventsSheet, itemsSheet } = ensureSheets_();
-  const { itemDictSheet, vendorDictSheet } = ensureDictionarySheets_();
   return {
     ok: true,
     eventsSheet: eventsSheet.getName(),
     itemsSheet: itemsSheet.getName(),
-    itemDictionarySheet: itemDictSheet.getName(),
-    vendorDictionarySheet: vendorDictSheet.getName(),
-    message: "Backend terhubung ke EVENTS dan ITEMS. Sheet ITEM_DICTIONARY dan " +
-      "VENDOR_DICTIONARY dibuat (kalau belum ada) — isi/import barisnya lalu " +
-      "dropdown Kategori & Nama Vendor di form akan otomatis ikut berubah.",
+    message: "Backend terhubung ke EVENTS dan ITEMS. Dictionary tab tidak dibuat.",
   };
 }
 
@@ -140,63 +105,6 @@ function invalidateEventsCache_() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Dictionaries (ITEM_DICTIONARY / VENDOR_DICTIONARY) — live dari sheet,   */
-/* di-cache singkat (60 detik) supaya edit di spreadsheet terlihat di      */
-/* website tanpa redeploy, tapi sheet tidak dibaca ulang di SETIAP request.*/
-/* Pakai ?action=getDictionaries&nocache=1 untuk memaksa baca langsung.    */
-/* ---------------------------------------------------------------------- */
-const DICTIONARIES_CACHE_KEY = "mx_dictionaries_cache_v1";
-const DICTIONARIES_CACHE_TTL_SECONDS = 60;
-
-// Sheet -> array of objects, berdasarkan header baris pertama. Baris tanpa
-// nilai di kolom pertama dilewati (dianggap baris kosong).
-function sheetToObjects_(sheet, headers, keys) {
-  const values = sheet.getDataRange().getValues();
-  if (values.length < 2) return [];
-  return values.slice(1)
-    .filter((row) => String(row[0] || "").trim() !== "")
-    .map((row) => {
-      const obj = {};
-      keys.forEach((key, i) => { obj[key] = row[i] !== undefined ? row[i] : ""; });
-      return obj;
-    });
-}
-
-function readItemDictionary_() {
-  const { itemDictSheet } = ensureDictionarySheets_();
-  return sheetToObjects_(itemDictSheet, ITEM_DICTIONARY_HEADERS,
-    ["itemId", "kategori", "namaItemStandar", "satuanStandar"]);
-}
-
-function readVendorDictionary_() {
-  const { vendorDictSheet } = ensureDictionarySheets_();
-  return sheetToObjects_(vendorDictSheet, VENDOR_DICTIONARY_HEADERS,
-    ["vendorId", "namaVendor", "kategoriLayanan"]);
-}
-
-function getDictionariesCached_(skipCache) {
-  const cache = CacheService.getScriptCache();
-  if (!skipCache) {
-    try {
-      const cached = cache.get(DICTIONARIES_CACHE_KEY);
-      if (cached) return JSON.parse(cached);
-    } catch (e) {
-      // Cache tidak terbaca — lanjut baca langsung dari sheet.
-    }
-  }
-
-  const result = { items: readItemDictionary_(), vendors: readVendorDictionary_() };
-
-  try {
-    cache.put(DICTIONARIES_CACHE_KEY, JSON.stringify(result), DICTIONARIES_CACHE_TTL_SECONDS);
-  } catch (e) {
-    // Dataset terlalu besar untuk cache — abaikan, tetap berhasil dibaca.
-  }
-
-  return result;
-}
-
-/* ---------------------------------------------------------------------- */
 /* GET                                                                      */
 /* ---------------------------------------------------------------------- */
 function doGet(e) {
@@ -239,12 +147,9 @@ function doGet(e) {
     }
 
     if (action === "getDictionaries") {
-      // Dibaca LIVE dari sheet ITEM_DICTIONARY & VENDOR_DICTIONARY (dengan
-      // cache 60 detik). Kalau kedua sheet itu masih kosong (baru dibuat,
-      // belum diisi), items/vendors akan kosong dan frontend otomatis
-      // jatuh ke data bundled di js/data.js sebagai fallback.
-      const skipCache = String(e.parameter && e.parameter.nocache) === "1";
-      return jsonResponse_(Object.assign({ ok: true }, getDictionariesCached_(skipCache)));
+      // Keep dictionaries outside Data Input. Frontend loadDictionaries()
+      // falls back to its bundled 204-item / 15-vendor reference data.
+      return jsonResponse_({ ok: true, items: [], vendors: [] });
     }
 
     return jsonResponse_({

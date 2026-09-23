@@ -28,15 +28,13 @@ const CONFIG = {
    form (js/combobox.js + js/input.js).
 
    - ITEM_DICTIONARY_BUNDLED / VENDOR_DICTIONARY_BUNDLED below are generated
-     from Item_Dictionary.xlsx / Vendor_Dictionary.xlsx and used as a
-     FALLBACK: local/demo mode (CONFIG.API_URL empty), or if the live fetch
-     to the backend fails or the sheets are still empty.
-   - Whenever CONFIG.API_URL is set, loadDictionaries() fetches the live
+     from Item_Dictionary.xlsx / Vendor_Dictionary.xlsx and used whenever
+     CONFIG.API_URL is empty (local/demo mode), so the dropdowns work
+     out of the box with no backend.
+   - When CONFIG.API_URL is set, loadDictionaries() instead fetches the live
      ITEM_DICTIONARY / VENDOR_DICTIONARY sheets from the Apps Script backend
-     (see Code.gs, action=getDictionaries, ensureDictionarySheets_). Edit
-     those sheets directly in the spreadsheet — Kategori & Nama Vendor on
-     the form pick it up on the next page load (backend caches for 60s, see
-     DICTIONARIES_CACHE_TTL_SECONDS in Code.gs).
+     (see Code.gs, action=getDictionaries), so edits to those sheets show up
+     without redeploying the site.
    ------------------------------------------------------------------------- */
 
 const ITEM_DICTIONARY_BUNDLED = [
@@ -605,30 +603,20 @@ function updateLocalSubmission(report) {
 }
 
 // Loads the item & vendor dictionaries that power the searchable dropdowns
-// (and the Kategori <select>) in input.html. When a backend is configured,
-// fetches the live ITEM_DICTIONARY / VENDOR_DICTIONARY sheets from Apps
-// Script so edits made directly in the spreadsheet show up here without
-// redeploying anything; falls back to the bundled reference arrays if
-// there's no backend, the fetch fails, or a sheet is still empty.
+// in input.html. Same local-vs-API split as loadAllEvents(): falls back to
+// the bundled arrays above when no backend is configured, so the dropdowns
+// still work in "run locally" mode.
 let _dictionariesCache = null;
-async function loadDictionaries(onRetry) {
+// REVISI (PERFORMA): sebelumnya fungsi ini SELALU memanggil
+// ?action=getDictionaries ke Apps Script terlebih dahulu — padahal Code.gs
+// (lihat komentar di doGet) memang SENGAJA selalu membalasnya dengan
+// items:[] / vendors:[] (dictionary tidak dibuat di sheet). Jadi setiap
+// buka input.html menunggu satu round-trip Apps Script (bisa beberapa
+// detik karena cold start) hanya untuk hasil yang pasti dibuang dan diganti
+// data bundled ini. Sekarang langsung pakai data bundled tanpa fetch sama
+// sekali, supaya "Memuat Data Master" tidak lagi menunggu jaringan.
+async function loadDictionaries() {
   if (_dictionariesCache) return _dictionariesCache;
-
-  if (CONFIG.API_URL) {
-    try {
-      const payload = await apiFetchJSON(CONFIG.API_URL + "?action=getDictionaries", undefined, onRetry);
-      if (payload && payload.ok !== false) {
-        _dictionariesCache = {
-          items: payload.items && payload.items.length ? payload.items : ITEM_DICTIONARY_BUNDLED,
-          vendors: payload.vendors && payload.vendors.length ? payload.vendors : VENDOR_DICTIONARY_BUNDLED,
-        };
-        return _dictionariesCache;
-      }
-    } catch (e) {
-      console.error("Gagal memuat dictionary live dari spreadsheet, pakai data bundled sebagai cadangan.", e);
-    }
-  }
-
   _dictionariesCache = { items: ITEM_DICTIONARY_BUNDLED, vendors: VENDOR_DICTIONARY_BUNDLED };
   return _dictionariesCache;
 }

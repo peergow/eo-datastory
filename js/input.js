@@ -82,44 +82,6 @@
     return list.filter((entry) => fields.some((f) => String(entry[f] || "").toLowerCase().includes(q))).slice(0, 50);
   }
 
-  // Daftar Kategori unik dari itemDictionary (yang sendiri berasal dari
-  // sheet ITEM_DICTIONARY lewat loadDictionaries() — lihat js/data.js).
-  // Diurutkan alfabetis (locale id) supaya dropdown rapi walau urutan baris
-  // di sheet berantakan.
-  function categoryList() {
-    const seen = new Set();
-    const list = [];
-    itemDictionary.forEach((opt) => {
-      const kategori = String(opt.kategori || "").trim();
-      if (kategori && !seen.has(kategori)) {
-        seen.add(kategori);
-        list.push(kategori);
-      }
-    });
-    return list.sort((a, b) => a.localeCompare(b, "id"));
-  }
-
-  // Mengisi ulang <option> pada select Kategori dari categoryList(),
-  // mempertahankan pilihan sekarang kalau masih valid. Dipanggil saat blok
-  // barang dibuat (dictionary sudah dimuat lebih dulu, lihat Promise.all
-  // di atas) supaya Kategori selalu mengikuti sheet ITEM_DICTIONARY tanpa
-  // perlu mengubah kode.
-  function populateCategorySelect(select) {
-    const current = select.value;
-    select.innerHTML = "";
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "Pilih kategori";
-    select.appendChild(placeholder);
-    categoryList().forEach((kategori) => {
-      const opt = document.createElement("option");
-      opt.value = kategori;
-      opt.textContent = kategori;
-      select.appendChild(opt);
-    });
-    if ([...select.options].some((o) => o.value === current)) select.value = current;
-  }
-
   function applyItemSelection(opt, block) {
     const codeInput = block.querySelector('[data-name="itemCode"]');
     const nameInput = block.querySelector('[data-name="itemName"]');
@@ -136,7 +98,6 @@
     const codeInput = block.querySelector('[data-name="itemCode"]');
     const nameInput = block.querySelector('[data-name="itemName"]');
     const categorySelect = block.querySelector('[data-name="category"]');
-    populateCategorySelect(categorySelect);
     const optionsFor = (query) => filterByQuery(itemDictionary, query, "itemId", "namaItemStandar", "kategori");
 
     initCombobox(codeInput, {
