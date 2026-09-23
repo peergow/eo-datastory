@@ -32,6 +32,50 @@ File `Item_Dictionary.xlsx` dan `Vendor_Dictionary.xlsx` pada paket tetap menjad
 
 ---
 
+# REVISI: Dropdown Kategori & Nama Vendor live dari spreadsheet
+
+Sebelumnya daftar Kategori (dropdown tetap di HTML) dan Nama Vendor
+(dictionary yang dibundel di `js/data.js`) hanya bisa diubah dengan
+mengedit kode lalu redeploy. Sekarang keduanya dibaca LANGSUNG dari sheet
+`ITEM_DICTIONARY` dan `VENDOR_DICTIONARY` di spreadsheet Data Input yang
+sama — edit sheetnya, dropdown di form ikut berubah (paling lambat ~60
+detik karena backend meng-cache, atau langsung kalau Anda reload halaman
+setelah cache itu kedaluwarsa).
+
+## Langkah setup (sekali saja)
+
+1. Tempel ulang `Code.gs` versi ini ke Apps Script project Anda, lalu
+   **Deploy → Manage deployments → Edit → Version: New version → Deploy**
+   (jangan buat deployment baru, supaya URL `/exec` tetap sama).
+2. Jalankan fungsi `setup` sekali dari editor Apps Script. Ini membuat dua
+   sheet baru kalau belum ada: `ITEM_DICTIONARY` (kolom: `ITEM ID`,
+   `KATEGORI`, `NAMA ITEM STANDAR`, `SATUAN STANDAR`) dan
+   `VENDOR_DICTIONARY` (kolom: `VENDOR ID`, `NAMA VENDOR`,
+   `KATEGORI LAYANAN`) — hanya header, tanpa data.
+3. Isi kedua sheet itu. Cara tercepat: buka `Item_Dictionary.xlsx` /
+   `Vendor_Dictionary.xlsx` yang sudah Anda punya, copy seluruh isinya
+   (termasuk header), lalu paste ke sheet `ITEM_DICTIONARY` /
+   `VENDOR_DICTIONARY` di spreadsheet Data Input — pastikan urutan kolom
+   sama persis dengan yang disebut di langkah 2.
+4. Buka `input.html` — Kategori & Nama vendor sekarang mengikuti isi dua
+   sheet itu. Menambah/menghapus/mengubah baris di sheet langsung berlaku
+   untuk laporan berikutnya, tanpa redeploy.
+
+## Catatan
+
+- Kalau kedua sheet itu masih kosong (baru dibuat, belum diisi), form
+  otomatis jatuh ke data bundled lama di `js/data.js` sebagai cadangan —
+  jadi form tidak akan pernah kosong sama sekali walau Anda lupa mengisi.
+- Kolom `KATEGORI` di `ITEM_DICTIONARY` adalah satu-satunya sumber pilihan
+  dropdown Kategori sekarang (bukan lagi daftar tetap di `input.html`).
+  Kalau perlu kategori baru (mis. "Lainnya"), tambahkan barisnya di sheet
+  ini.
+- Mau paksa baca langsung tanpa menunggu cache 60 detik habis? Buka
+  `<URL_/exec>?action=getDictionaries&nocache=1` di tab baru — ini hanya
+  untuk mengecek data, tidak mempengaruhi tampilan form.
+
+---
+
 # REVISI: Fitur Edit Laporan + Perbaikan Login/Performa
 
 ## 1. Langkah WAJIB di spreadsheet — kolom baru di sheet `ITEMS`
