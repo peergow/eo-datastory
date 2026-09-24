@@ -592,6 +592,29 @@ async function loadEventById(eventId, onRetry) {
   throw new Error("Event tidak ditemukan.");
 }
 
+// Ringkasan angka saja (jumlah event, vendor unik, jenis barang unik) untuk
+// strip "sekilas" di index.html. Dipakai supaya landing page tidak perlu
+// menarik seluruh dataset (loadAllEvents) hanya untuk 3 angka ini — sama
+// persis hasilnya, hanya jalur & payload-nya yang lebih ringan/cepat.
+async function loadStats(onRetry) {
+  if (CONFIG.API_URL) {
+    const payload = await apiFetchJSON(CONFIG.API_URL + "?action=getStats", undefined, onRetry);
+    return {
+      eventCount: payload.eventCount || 0,
+      vendorCount: payload.vendorCount || 0,
+      itemCount: payload.itemCount || 0,
+    };
+  }
+  const events = [...SAMPLE_EVENTS, ...readLocalSubmissions()];
+  const vendors = new Set();
+  const items = new Set();
+  events.forEach((ev) => ev.items.forEach((i) => {
+    if (i.vendor) vendors.add(canonicalKey(i.vendor));
+    if (i.itemName) items.add(canonicalKey(i.itemName));
+  }));
+  return { eventCount: events.length, vendorCount: vendors.size, itemCount: items.size };
+}
+
 // Menimpa satu laporan yang sudah ada di localStorage (mode demo tanpa
 // backend) — dipakai oleh submitEvent() saat report.isEdit=true.
 function updateLocalSubmission(report) {

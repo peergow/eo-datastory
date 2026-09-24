@@ -4,6 +4,10 @@
 <script src="js/auth-guard.js"></script>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://script.google.com" crossorigin />
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin />
+<link rel="dns-prefetch" href="https://script.google.com" />
+<link rel="dns-prefetch" href="https://script.googleusercontent.com" />
 <title>MAXIMUM THE ULTIMATE — Laporan Event &amp; Analytics</title>
 <link rel="stylesheet" href="css/style.css" />
 <link rel="stylesheet" href="css/loader.css" />
@@ -41,16 +45,10 @@
     (async function () {
       MaximumLoader.show("Harap Tunggu");
       try {
-        const events = await loadAllEvents();
-        const vendors = new Set();
-        const items = new Set();
-        events.forEach((e) => e.items.forEach((i) => {
-          if (i.vendor) vendors.add(canonicalKey(i.vendor));
-          if (i.itemName) items.add(canonicalKey(i.itemName));
-        }));
-        document.getElementById("glance-events").textContent = events.length;
-        document.getElementById("glance-vendors").textContent = vendors.size;
-        document.getElementById("glance-items").textContent = items.size;
+        const stats = await loadStats();
+        document.getElementById("glance-events").textContent = stats.eventCount;
+        document.getElementById("glance-vendors").textContent = stats.vendorCount;
+        document.getElementById("glance-items").textContent = stats.itemCount;
       } catch (e) {
         console.error(e);
       } finally {

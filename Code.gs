@@ -146,6 +146,30 @@ function doGet(e) {
       return jsonResponse_({ ok: true, event: found });
     }
 
+    // Ringkasan angka saja (jumlah event, vendor unik, jenis barang unik)
+    // untuk strip "sekilas" di index.html. TIDAK mengirim daftar event/item
+    // sama sekali ke browser (beda dengan getAnalytics) — jauh lebih kecil
+    // & lebih cepat di-parse, memakai cache yang sama dengan getAnalytics.
+    if (action === "getStats") {
+      const events = getEventsCached_();
+      const vendors = new Set();
+      const items = new Set();
+      events.forEach((ev) => {
+        ev.items.forEach((it) => {
+          const vendorKey = String(it.vendor || "").trim().replace(/\s+/g, " ").toLowerCase();
+          const itemKey = String(it.itemName || "").trim().replace(/\s+/g, " ").toLowerCase();
+          if (vendorKey) vendors.add(vendorKey);
+          if (itemKey) items.add(itemKey);
+        });
+      });
+      return jsonResponse_({
+        ok: true,
+        eventCount: events.length,
+        vendorCount: vendors.size,
+        itemCount: items.size,
+      });
+    }
+
     if (action === "getDictionaries") {
       // Keep dictionaries outside Data Input. Frontend loadDictionaries()
       // falls back to its bundled 204-item / 15-vendor reference data.
@@ -154,7 +178,7 @@ function doGet(e) {
 
     return jsonResponse_({
       ok: true,
-      message: "MAXIMUM THE ULTIMATE API aktif. Gunakan ?action=getAnalytics, ?action=getEventsList, ?action=getEventById&eventId=... atau ?action=getDictionaries.",
+      message: "MAXIMUM THE ULTIMATE API aktif. Gunakan ?action=getAnalytics, ?action=getEventsList, ?action=getEventById&eventId=..., ?action=getStats, atau ?action=getDictionaries.",
     });
   } catch (err) {
     return jsonResponse_({ ok: false, error: String(err.message || err) });

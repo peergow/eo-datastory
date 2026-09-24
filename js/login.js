@@ -66,14 +66,20 @@
         try {
           sessionStorage.setItem(AUTH_CONFIG.SESSION_KEY, data.username || username);
         } catch (_) {}
-        // REVISI: delay splash sebelumnya 3000ms (fix, tidak tergantung
-        // kecepatan server) — salah satu penyebab login "terasa lama" di
-        // atas waktu respons Apps Script itu sendiri. Dipersingkat jadi
-        // transisi singkat saja.
+        // REVISI: delay splash sebelumnya 3000ms lalu 400ms (fix, tidak
+        // tergantung kecepatan server) — salah satu penyebab login "terasa
+        // lama" di atas waktu respons Apps Script itu sendiri. Sekarang
+        // hanya menunggu 2 frame (dua requestAnimationFrame) supaya label
+        // "Harap Tunggu" sempat ter-render di layar sebelum pindah halaman,
+        // alih-alih menunggu angka milidetik tetap yang lebih lama dari
+        // yang sebenarnya dibutuhkan browser untuk menggambar 1 frame.
         MaximumLoader.setLabel("Harap Tunggu");
-        setTimeout(function () {
-          window.location.href = "index.html";
-        }, 400);
+        const goToIndex = function () { window.location.href = "index.html"; };
+        if (typeof requestAnimationFrame === "function") {
+          requestAnimationFrame(function () { requestAnimationFrame(goToIndex); });
+        } else {
+          setTimeout(goToIndex, 50);
+        }
         return; // jangan matikan loader / tombol, biar transisinya mulus
       }
 
