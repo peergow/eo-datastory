@@ -267,41 +267,60 @@
   /* -----------------------------------------------------------------------
      Status Pembayaran — drill-down per vendor / per event. Independen dari
      filter tanggal global di atas: hanya memengaruhi donat, legend, dan
-     daftar outstanding di section 06, tidak menyentuh section lain. Opsi
-     dropdown diambil dari seluruh data yang sudah masuk (rawEvents), bukan
-     dari hasil filter tanggal, supaya daftarnya tidak berubah-ubah saat
-     rentang tanggal diganti.
+     daftar outstanding di section 06, tidak menyentuh section lain.
+
+     Opsi dropdown EVENT tetap diambil dari seluruh data yang sudah masuk
+     (rawEvents), bukan dari hasil filter tanggal, supaya daftarnya tidak
+     berubah-ubah saat rentang tanggal diganti.
+
+     Opsi dropdown VENDOR sengaja diambil dari VENDOR_DICTIONARY (lewat
+     loadDictionaries() -> ?action=getDictionaries), BUKAN dari nama vendor
+     yang muncul di transaksi (rawEvents). Ini "live edit": begitu nama
+     vendor ditambah/diubah di sheet VENDOR_DICTIONARY, dropdown ini ikut
+     berubah pada load berikutnya tanpa perlu ada transaksi baru dulu.
+     Kalau dictionary gagal/kosong (mis. backend offline), fallback ke
+     nama vendor dari transaksi supaya dropdown tidak pernah kosong.
      ----------------------------------------------------------------------- */
   const paymentVendorSelect = document.getElementById("payment-filter-vendor");
   const paymentEventSelect = document.getElementById("payment-filter-event");
   let currentView = null;
 
-  function populatePaymentFilterOptions(events) {
-    const vendors = [...new Set(events.flatMap((ev) => ev.items.map((it) => it.vendor)).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, "id"));
+  // Dibangun lewat DOM API (bukan string HTML digabung manual) supaya nama
+  // vendor/event yang mengandung karakter seperti " atau & tidak merusak
+  // markup <option> berikutnya.
+  function fillSelect(select, defaultLabel, values) {
+    select.innerHTML = "";
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = "";
+    defaultOpt.textContent = defaultLabel;
+    select.appendChild(defaultOpt);
+    for (const v of values) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      select.appendChild(opt);
+    }
+  }
+
+  async function populatePaymentFilterOptions(events) {
     const eventNames = [...new Set(events.map((ev) => ev.event).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, "id"));
-    // Dibangun lewat DOM API (bukan string HTML digabung manual) supaya
-    // nama vendor/event yang mengandung karakter seperti " atau & tidak
-    // merusak markup <option> berikutnya — sebelumnya itu bisa membuat
-    // hampir seluruh daftar pilihan gagal ke-parse dengan benar.
-    const fillSelect = (select, defaultLabel, values) => {
-      select.innerHTML = "";
-      const defaultOpt = document.createElement("option");
-      defaultOpt.value = "";
-      defaultOpt.textContent = defaultLabel;
-      select.appendChild(defaultOpt);
-      for (const v of values) {
-        const opt = document.createElement("option");
-        opt.value = v;
-        opt.textContent = v;
-        select.appendChild(opt);
-      }
-    };
-    fillSelect(paymentVendorSelect, "Semua Vendor", vendors);
     fillSelect(paymentEventSelect, "Semua Event", eventNames);
+
+    let vendorNames;
+    try {
+      const dict = await loadDictionaries();
+      vendorNames = [...new Set(dict.vendors.map((v) => v.namaVendor).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "id"));
+      if (!vendorNames.length) throw new Error("VENDOR_DICTIONARY kosong.");
+    } catch (err) {
+      console.warn("populatePaymentFilterOptions: gagal memuat VENDOR_DICTIONARY, fallback ke vendor dari transaksi.", err);
+      vendorNames = [...new Set(events.flatMap((ev) => ev.items.map((it) => it.vendor)).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "id"));
+    }
+    fillSelect(paymentVendorSelect, "Semua Vendor", vendorNames);
   }
-  populatePaymentFilterOptions(rawEvents);
+  await populatePaymentFilterOptions(rawEvents);
 
   function filterEventsForPayment(events) {
     const vendorFilter = paymentVendorSelect.value;
