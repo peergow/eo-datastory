@@ -731,7 +731,34 @@
     if (pendingReport) confirmSubmit(pendingReport);
   });
 
-  async function confirmSubmit(report) {
+  // Submit TANPA layar loading: laporan disimpan ke antrean lokal (instan) lalu
+  // dikirim di latar belakang oleh js/outbox.js lewat submitEvent() yang sama.
+  // Data boleh telat muncul di Analytics/spreadsheet; kalau pengiriman gagal,
+  // data tetap aman di antrean dan dicoba lagi otomatis.
+  function confirmSubmit(report) {
+    const outbox = window.MaximumOutbox;
+    const queued = outbox ? outbox.enqueue({ ...report, submittedAt: new Date().toISOString() }) : null;
+    if (!queued) {
+      // Penyimpanan lokal tidak tersedia -> pakai jalur lama (menunggu server).
+      return confirmSubmitBlocking(report);
+    }
+    previewSubmitBtn.disabled = true;
+    previewEditBtn.disabled = true;
+    if (editEventId) {
+      // Pengiriman dilanjutkan otomatis oleh halaman Daftar Event.
+      window.location.href = "events.html";
+      return;
+    }
+    showSuccess();
+    resetForm();
+    hidePreview();
+    previewSubmitBtn.disabled = false;
+    previewEditBtn.disabled = false;
+    outbox.flush({ quiet: true });
+  }
+
+  // Jalur lama (menunggu server + layar loading). Dipakai hanya sebagai cadangan.
+  async function confirmSubmitBlocking(report) {
     // Timestamp dicatat saat benar-benar dikirim (bukan saat pratinjau dibuka).
     report.submittedAt = new Date().toISOString();
     previewError.textContent = "";
