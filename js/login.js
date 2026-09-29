@@ -6,6 +6,23 @@
    ========================================================================= */
 
 (function () {
+  /* ---------------------------------------------------------------------
+     AKUN LOKAL (login instan, tanpa menunggu server Apps Script).
+     Tambahkan akun di daftar LOCAL_USERS di bawah, satu baris per akun:
+       { username: "nama", password: "katasandi" },
+     Kalau username & password cocok dengan salah satu baris, login langsung
+     berhasil saat itu juga. Kalau tidak cocok dan FALLBACK_TO_SERVER = true,
+     login tetap dicek ke server seperti sebelumnya (akun di sheet USERS
+     tetap berfungsi). Set FALLBACK_TO_SERVER = false kalau hanya ingin
+     akun di daftar ini yang boleh masuk.
+     CATATAN: isi file ini bisa dibaca siapa pun yang membuka situs
+     (View Source). Pakai password khusus untuk situs ini saja.
+     --------------------------------------------------------------------- */
+  const LOCAL_USERS = [
+    // { username: "maximum", password: "jayajayajaya" },
+  ];
+  const FALLBACK_TO_SERVER = true;
+
   const form = document.getElementById("login-form");
   const errorEl = document.getElementById("login-error");
   const submitBtn = document.getElementById("login-submit");
@@ -38,6 +55,22 @@
 
     if (!username || !password) {
       setError("Username dan password wajib diisi.");
+      return;
+    }
+
+    // Cek akun lokal dulu: instan, tanpa request jaringan.
+    const localUser = LOCAL_USERS.find(function (u) {
+      return String(u.username || "").trim() === username && String(u.password || "") === password;
+    });
+    if (localUser) {
+      try {
+        sessionStorage.setItem(AUTH_CONFIG.SESSION_KEY, String(localUser.username).trim());
+      } catch (_) {}
+      window.location.href = "index.html";
+      return;
+    }
+    if (!FALLBACK_TO_SERVER) {
+      setError("Username atau password salah.");
       return;
     }
 
