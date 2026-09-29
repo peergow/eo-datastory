@@ -223,6 +223,49 @@
   }
 
   /* ---------------------------------------------------------------------
+     Tampilan tabel (mirip spreadsheet) untuk daftar barang.
+     - Dropdown combobox dipasang "fixed" supaya tidak terpotong oleh
+       kontainer tabel yang bisa di-scroll; posisinya dihitung dari sel.
+     - Kolom Keterangan otomatis melebar mengikuti isi.
+     --------------------------------------------------------------------- */
+  function positionComboList(list) {
+    if (!list || list.hidden) return;
+    const wrap = list.closest(".combo-wrapper");
+    if (!wrap) return;
+    const r = wrap.getBoundingClientRect();
+    const width = Math.max(r.width, 340);
+    list.style.width = width + "px";
+    list.style.right = "auto";
+    list.style.left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8)) + "px";
+    const h = list.offsetHeight;
+    const spaceBelow = window.innerHeight - r.bottom;
+    list.style.top = (spaceBelow < h + 8 && r.top > h + 8)
+      ? (r.top - h - 4) + "px"
+      : (r.bottom + 4) + "px";
+  }
+  function repositionOpenComboLists() {
+    itemsContainer.querySelectorAll(".combo-list:not([hidden])").forEach(positionComboList);
+  }
+  ["focusin", "input", "click", "keydown"].forEach((type) => {
+    itemsContainer.addEventListener(type, (e) => {
+      const wrap = e.target.closest && e.target.closest(".combo-wrapper");
+      if (wrap) positionComboList(wrap.querySelector(".combo-list"));
+    });
+  });
+  document.addEventListener("scroll", repositionOpenComboLists, true);
+  window.addEventListener("resize", repositionOpenComboLists);
+
+  function autoGrowDescription(textarea) {
+    textarea.style.height = "auto";
+    textarea.style.height = Math.min(textarea.scrollHeight + 2, 220) + "px";
+  }
+  itemsContainer.addEventListener("input", (e) => {
+    if (e.target.matches && e.target.matches('textarea[data-name="description"]')) {
+      autoGrowDescription(e.target);
+    }
+  });
+
+  /* ---------------------------------------------------------------------
      Dynamic item blocks
      --------------------------------------------------------------------- */
   function renumberItems() {
@@ -290,6 +333,8 @@
       dpInput.value = Number(item.nominalDP || 0).toLocaleString("id-ID");
       dpInput.dispatchEvent(new Event("input"));
     }
+
+    autoGrowDescription(node.querySelector('[data-name="description"]'));
   }
 
   // Mengisi seluruh form (bagian atas + semua blok barang) dari satu event
@@ -501,6 +546,198 @@
       submittedAt: new Date().toISOString(),
     };
 
+    // Jangan langsung kirim: tampilkan pratinjau dulu. Pengiriman sebenarnya
+    // terjadi di confirmSubmit() setelah pengguna menekan Submit/Update.
+    showPreview(report);
+  });
+
+  /* ---------------------------------------------------------------------
+     Pratinjau sebelum submit (berlaku untuk input baru DAN edit event).
+     Menampilkan ringkasan semua isian; pengguna memilih Edit (kembali ke
+     form, isian tetap utuh) atau Submit/Update (kirim seperti biasa).
+     --------------------------------------------------------------------- */
+  const previewSection = document.getElementById("report-preview");
+  const previewBody = document.getElementById("preview-body");
+  const previewSubmitBtn = document.getElementById("preview-submit");
+  const previewEditBtn = document.getElementById("preview-edit");
+  const previewError = document.getElementById("preview-error");
+  let headingBackup = null;
+  let pendingReport = null;
+
+  function previewEl(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function formatRupiah(n) {
+    return "Rp " + (Number(n) || 0).toLocaleString("id-ID");
+  }
+
+  function formatDateId(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+    if (!m) return iso || "—";
+    return new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  }
+
+  function previewList(rows) {
+    const dl = previewEl("dl", "preview-list");
+    rows.forEach(([label, value]) => {
+      const row = previewEl("div", "preview-row");
+      row.appendChild(previewEl("dt", "", label));
+      row.appendChild(previewEl("dd", "", value === "" || value == null ? "—" : String(value)));
+      dl.appendChild(row);
+    });
+    return dl;
+  }
+
+  function previewSectionBlock(title, contentNode) {
+    const section = previewEl("section", "preview-section");
+    section.appendChild(previewEl("h2", "", title));
+    section.appendChild(contentNode);
+    return section;
+  }
+
+  function showPreview(report) {
+    pendingReport = report;
+    previewError.textContent = "";
+    previewBody.innerHTML = "";
+
+    const days = report.eventDays;
+    previewBody.appendChild(previewSectionBlock("Event Information", previewList([
+      ["Nama user / pengisi laporan", report.user],
+      ["Nama event", report.event],
+      ["Nama perusahaan / client", report.client],
+      ["Tanggal mulai event (di luar GR)", formatDateId(report.eventDate)],
+      ["Tanggal selesai event (di luar GR)", formatDateId(report.eventDateEnd)],
+      ["Jumlah day event", days ? `${days} hari` : "—"],
+      ["Jumlah GR (General Rehearsal)", report.gr],
+      ["Total termasuk GR", days ? `${days + report.gr} hari (${days} event + ${report.gr} GR)` : "—"],
+    ])));
+
+    previewBody.appendChild(previewSectionBlock("Location", previewList([
+      ["Kota", report.city],
+      ["Negara", report.country],
+    ])));
+
+    const itemsWrap = previewEl("div", "preview-items");
+    if (report.items.length === 0) {
+      itemsWrap.appendChild(previewEl("p", "no-items-msg", "Tanpa barang — event ini disimpan tanpa item sewa."));
+    } else {
+      const wrap = previewEl("div", "items-table-wrap");
+      const table = previewEl("table", "items-table preview-table");
+
+      const headers = [
+        ["No", "col-no"], ["Item ID", "col-code"], ["Nama Barang", "col-name"], ["Kategori", "col-cat"],
+        ["Nama vendor", "col-vendor"], ["Status Pembayaran", "col-status"], ["Harga total (Rp)", "col-price"],
+        ["Nominal DP (Rp)", "col-dp"], ["Sisa DP (Rp)", "col-sisa"], ["Keterangan", "col-desc"],
+      ];
+      const thead = previewEl("thead");
+      const headRow = previewEl("tr");
+      headers.forEach(([text, cls]) => headRow.appendChild(previewEl("th", cls, text)));
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      const cell = (text, label, cls) => {
+        const td = previewEl("td", cls || "", text === "" || text == null ? "—" : String(text));
+        td.dataset.label = label;
+        return td;
+      };
+
+      const tbody = previewEl("tbody");
+      let sumTotal = 0;
+      let sumDP = 0;
+      let sumSisa = 0;
+      report.items.forEach((item, i) => {
+        const total = item.totalPrice || 0;
+        const dp = item.nominalDP || 0;
+        const sisa = Math.max(0, total - dp);
+        sumTotal += total;
+        sumDP += dp;
+        sumSisa += sisa;
+        const tr = previewEl("tr", "preview-item-row");
+        tr.appendChild(cell(i + 1, "No", "col-no"));
+        tr.appendChild(cell(item.itemCode, "Item ID", "col-code"));
+        tr.appendChild(cell(item.itemName, "Nama Barang", "col-name"));
+        tr.appendChild(cell(item.category, "Kategori", "col-cat"));
+        tr.appendChild(cell(item.vendor, "Nama vendor", "col-vendor"));
+        tr.appendChild(cell(item.paymentStatus, "Status Pembayaran", "col-status"));
+        tr.appendChild(cell(formatRupiah(total), "Harga total", "col-price num"));
+        tr.appendChild(cell(formatRupiah(dp), "Nominal DP", "col-dp num"));
+        tr.appendChild(cell(formatRupiah(sisa), "Sisa DP", "col-sisa num"));
+        tr.appendChild(cell(item.description, "Keterangan", "col-desc"));
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      const tfoot = previewEl("tfoot");
+      const footRow = previewEl("tr");
+      const footLabel = previewEl("td", "foot-label", `Total (${report.items.length} barang)`);
+      footLabel.colSpan = 6;
+      footLabel.dataset.label = "";
+      footRow.appendChild(footLabel);
+      footRow.appendChild(cell(formatRupiah(sumTotal), "Harga total", "col-price num"));
+      footRow.appendChild(cell(formatRupiah(sumDP), "Nominal DP", "col-dp num"));
+      footRow.appendChild(cell(formatRupiah(sumSisa), "Sisa DP", "col-sisa num"));
+      const footBlank = previewEl("td", "col-desc");
+      footBlank.dataset.label = "";
+      footRow.appendChild(footBlank);
+      tfoot.appendChild(footRow);
+      table.appendChild(tfoot);
+
+      wrap.appendChild(table);
+      itemsWrap.appendChild(wrap);
+    }
+    previewBody.appendChild(previewSectionBlock(`Rental Items (${report.items.length})`, itemsWrap));
+
+    if (!headingBackup) {
+      headingBackup = {
+        eyebrow: pageEyebrow.textContent,
+        title: pageTitle.textContent,
+        desc: pageDesc.textContent,
+      };
+    }
+    pageEyebrow.textContent = editEventId ? "PRATINJAU PERUBAHAN" : "PRATINJAU LAPORAN";
+    pageTitle.textContent = editEventId ? "Periksa sebelum menyimpan perubahan" : "Periksa sebelum submit";
+    pageDesc.textContent = editEventId
+      ? "Pastikan semua isian sudah benar. Pilih Edit untuk kembali ke form, atau Update Report untuk menyimpan perubahan."
+      : "Pastikan semua isian sudah benar. Pilih Edit untuk kembali ke form, atau Submit Report untuk menyimpan laporan.";
+    previewSubmitBtn.textContent = editEventId ? "Update Report" : "Submit Report";
+
+    form.hidden = true;
+    previewSection.hidden = false;
+    window.scrollTo(0, 0);
+  }
+
+  function hidePreview() {
+    if (headingBackup) {
+      pageEyebrow.textContent = headingBackup.eyebrow;
+      pageTitle.textContent = headingBackup.title;
+      pageDesc.textContent = headingBackup.desc;
+      headingBackup = null;
+    }
+    previewSection.hidden = true;
+    form.hidden = false;
+    window.scrollTo(0, 0);
+  }
+
+  previewEditBtn.addEventListener("click", () => {
+    previewError.textContent = "";
+    hidePreview();
+  });
+
+  previewSubmitBtn.addEventListener("click", () => {
+    if (pendingReport) confirmSubmit(pendingReport);
+  });
+
+  async function confirmSubmit(report) {
+    // Timestamp dicatat saat benar-benar dikirim (bukan saat pratinjau dibuka).
+    report.submittedAt = new Date().toISOString();
+    previewError.textContent = "";
+    previewSubmitBtn.disabled = true;
+    previewEditBtn.disabled = true;
+
     submitBtn.disabled = true;
     submitBtn.textContent = editEventId ? "Menyimpan Perubahan…" : "Menyimpan…";
     MaximumLoader.show("Menyimpan Laporan");
@@ -513,19 +750,31 @@
       }
       showSuccess();
       resetForm();
+      hidePreview();
     } catch (err) {
       console.error(err);
       formLevelError.textContent = editEventId
         ? "Gagal menyimpan perubahan. Silakan coba lagi."
         : "Gagal menyimpan laporan. Silakan coba lagi.";
+      previewError.textContent = formLevelError.textContent;
+      // Pengguna tetap di halaman pratinjau dan bisa mencoba lagi / kembali edit.
+      previewSubmitBtn.disabled = false;
+      previewEditBtn.disabled = false;
+      if (editEventId) {
+        MaximumLoader.hide();
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Update Report";
+      }
     } finally {
       if (!editEventId) {
         MaximumLoader.hide();
         submitBtn.disabled = false;
         submitBtn.textContent = "Submit Report";
+        previewSubmitBtn.disabled = false;
+        previewEditBtn.disabled = false;
       }
     }
-  });
+  }
 
   function showSuccess() {
     toast.classList.add("visible");

@@ -96,7 +96,26 @@
         <div class="items-header">
           <div class="items-count">TOTAL ITEMS: <strong id="items-count">0</strong></div>
         </div>
-        <div id="items-container"></div>
+        <p class="items-hint">Klik atau ketik di kolom Item ID, Nama Barang, dan Nama vendor untuk mencari dari dictionary — Kategori terisi otomatis saat barang dipilih. Nominal DP otomatis sama dengan Harga total jika Lunas; isi manual hanya untuk DP.</p>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th class="col-no">No</th>
+                <th class="col-code" title="Pilih dari dictionary — Nama barang &amp; Kategori terisi otomatis.">Item ID</th>
+                <th class="col-name" title="Bisa dicari dengan Nama Barang maupun Item ID.">Nama Barang</th>
+                <th class="col-cat">Kategori</th>
+                <th class="col-vendor">Nama vendor</th>
+                <th class="col-status">Status Pembayaran</th>
+                <th class="col-price">Harga total (Rp)</th>
+                <th class="col-dp" title="Otomatis sama dengan Harga Total (Lunas). Isi manual hanya untuk DP.">Nominal DP (Rp)</th>
+                <th class="col-desc">Keterangan <span class="optional">(opsional)</span></th>
+                <th class="col-act"><span class="sr-only">Aksi</span></th>
+              </tr>
+            </thead>
+            <tbody id="items-container"></tbody>
+          </table>
+        </div>
         <p class="no-items-msg" id="no-items-msg">Belum ada barang ditambahkan.</p>
         <button type="button" class="btn-add-item" id="add-item">+ Tambah Barang</button>
       </fieldset>
@@ -107,6 +126,16 @@
         <span class="form-level-error" id="form-level-error" role="alert"></span>
       </div>
     </form>
+
+    <!-- Halaman pratinjau: muncul setelah tombol Submit/Update ditekan dan validasi lolos. -->
+    <section class="report-preview" id="report-preview" hidden aria-live="polite">
+      <div id="preview-body"></div>
+      <div class="submit-row preview-actions">
+        <button type="button" id="preview-submit">Submit Report</button>
+        <button type="button" id="preview-edit">← Edit</button>
+        <span class="form-level-error" id="preview-error" role="alert"></span>
+      </div>
+    </section>
   </main>
 
   <div class="success-toast" id="success-toast" role="status" aria-live="polite">
@@ -115,27 +144,23 @@
   </div>
 
   <template id="item-block-template">
-    <div class="item-block" data-item-block>
-      <div class="item-block-header">
-        <span class="item-block-title">BARANG #<span data-item-number>1</span></span>
-        <button type="button" class="btn-remove-item" data-remove-item>Hapus</button>
-      </div>
-      <div class="field-grid">
+    <tr class="item-block" data-item-block>
+      <td class="col-no" data-label="No"><span data-item-number>1</span></td>
+      <td class="col-code" data-label="Item ID">
         <div class="field" data-field="itemCode">
-          <label>Item ID</label>
-          <input type="text" data-name="itemCode" placeholder="Ketik untuk cari, atau klik untuk lihat daftar" required />
-          <span class="hint">Pilih dari dictionary — Nama barang &amp; Kategori terisi otomatis.</span>
+          <input type="text" data-name="itemCode" aria-label="Item ID" placeholder="Cari / pilih" required />
           <div class="error-msg" role="alert"></div>
         </div>
+      </td>
+      <td class="col-name" data-label="Nama Barang">
         <div class="field" data-field="itemName">
-          <label>Nama Barang</label>
-          <input type="text" data-name="itemName" placeholder="Cari berdasarkan nama barang atau Item ID" required />
-          <span class="hint">Bisa dicari dengan Nama Barang maupun Item ID. Saat dipilih, nama produk akan terisi otomatis.</span>
+          <input type="text" data-name="itemName" aria-label="Nama Barang" placeholder="Cari nama barang atau ID" required />
           <div class="error-msg" role="alert"></div>
         </div>
+      </td>
+      <td class="col-cat" data-label="Kategori">
         <div class="field" data-field="category">
-          <label>Kategori</label>
-          <select data-name="category" required>
+          <select data-name="category" aria-label="Kategori" required>
             <option value="">Pilih kategori</option>
             <option>LED</option>
             <option>Genset</option>
@@ -150,39 +175,46 @@
           </select>
           <div class="error-msg" role="alert"></div>
         </div>
+      </td>
+      <td class="col-vendor" data-label="Nama vendor">
         <div class="field" data-field="vendor">
-          <label>Nama vendor</label>
-          <input type="text" data-name="vendor" placeholder="Ketik untuk cari, atau klik untuk lihat daftar" required />
+          <input type="text" data-name="vendor" aria-label="Nama vendor" placeholder="Cari / pilih vendor" required />
           <div class="error-msg" role="alert"></div>
         </div>
+      </td>
+      <td class="col-status" data-label="Status Pembayaran">
         <div class="field" data-field="paymentStatus">
-          <label>Status Pembayaran</label>
-          <select data-name="paymentStatus" required>
+          <select data-name="paymentStatus" aria-label="Status Pembayaran" required>
             <option value="">Pilih status</option>
             <option value="Lunas">Lunas</option>
             <option value="DP">DP</option>
           </select>
           <div class="error-msg" role="alert"></div>
         </div>
+      </td>
+      <td class="col-price" data-label="Harga total (Rp)">
         <div class="field" data-field="totalPrice">
-          <label>Harga total (Rp)</label>
-          <input type="text" inputmode="numeric" placeholder="cth. 5.000.000" data-name="totalPrice" required />
+          <input type="text" inputmode="numeric" placeholder="cth. 5.000.000" data-name="totalPrice" aria-label="Harga total (Rp)" required />
           <div class="error-msg" role="alert"></div>
         </div>
-        <div class="field span-2" data-field="nominalDP">
-          <label>Nominal DP (Rp)</label>
-          <input type="text" inputmode="numeric" placeholder="cth. 2.000.000" data-name="nominalDP" disabled />
-          <span class="hint">Otomatis sama dengan Harga Total (Lunas). Isi manual hanya untuk DP.</span>
+      </td>
+      <td class="col-dp" data-label="Nominal DP (Rp)">
+        <div class="field" data-field="nominalDP">
+          <input type="text" inputmode="numeric" placeholder="cth. 2.000.000" data-name="nominalDP" aria-label="Nominal DP (Rp)" disabled />
           <span class="hint" data-sisa-dp-display></span>
           <div class="error-msg" role="alert"></div>
         </div>
-        <div class="field span-2" data-field="description">
-          <label>Keterangan <span class="optional">(opsional)</span></label>
-          <textarea data-name="description" rows="3" placeholder="Keterangan spesifikasi, ukuran, warna, kebutuhan khusus, dll."></textarea>
+      </td>
+      <td class="col-desc" data-label="Keterangan (opsional)">
+        <div class="field" data-field="description">
+          <textarea data-name="description" rows="2" aria-label="Keterangan (opsional)" placeholder="Spesifikasi, ukuran, warna, dll."></textarea>
           <div class="error-msg" role="alert"></div>
         </div>
-      </div>
-    </div>
+      </td>
+      <td class="col-act" data-label="">
+        <button type="button" class="btn-remove-item" data-remove-item>Hapus</button>
+      </td>
+    </tr>
   </template>
 
   <script src="js/loader.js"></script>
