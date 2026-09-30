@@ -108,3 +108,12 @@ tidak memakai password yang sama dengan akun penting lain.
 - Endpoint backend baru: `?action=getEventsList` (daftar ringkas, cepat,
   tanpa detail barang) dan `?action=getEventById&eventId=...` (detail
   satu event untuk mengisi form edit).
+
+---
+
+## REVISI: Hapus kolom Item ID + ghost-text autocomplete Nama Barang
+
+- Form Input Report tidak lagi punya kolom **Item ID**. Kolom **Nama Barang** sekarang input ketik biasa; saran dari dictionary muncul sebagai teks abu-abu di belakang huruf yang diketik. **Tab** atau **→** (atau ketuk teks abu-abu di HP) untuk menerima; Kategori terisi otomatis.
+- Nama yang tidak ada di dictionary tetap boleh. Saat submit, **Code.gs** menambahkannya ke sheet **`ITEM_DICTIONARY`** (kolom: ITEM ID, KATEGORI, NAMA ITEM STANDAR, SATUAN STANDAR; hanya menambah baris, tidak pernah mengubah/menghapus) dengan kode baru seperti `LGT-N001`, lalu barang itu muncul sebagai saran di input berikutnya (dibaca lewat `?action=getDictionaries` yang memang live dari sheet).
+- Kolom `ITEM ID` di sheet `ITEMS` tetap terisi (kode dari dictionary, atau kode baru untuk barang baru).
+- **WAJIB: deploy ulang Apps Script** (Code.gs berubah) agar barang baru tercatat ke dictionary.

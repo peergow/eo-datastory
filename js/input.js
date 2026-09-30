@@ -40,7 +40,7 @@
   let itemSeq = 0;
 
   /* ---------------------------------------------------------------------
-     Item & vendor dictionaries — power the Item ID / Vendor dropdown-search
+     Item & vendor dictionaries — power the Nama Barang ghost-autocomplete / Vendor dropdown-search
      fields. Loaded once on page load; every item block wires its own
      combobox against these same arrays (see attachItemDictionaryCombo /
      attachVendorCombo below). When editing, the existing event's data is
@@ -56,8 +56,12 @@
       MaximumLoader.setLabel(`Masih memuat data event, mencoba lagi… (${attempt}/${attempts})`);
     }) : Promise.resolve(null),
   ]).then(([dicts, ev]) => {
-    itemDictionary = dicts.items;
+    itemDictionary = dicts.items.slice();
     vendorDictionary = dicts.vendors;
+    // Barang baru yang pernah disubmit: cache lokal langsung, sheet
+    // ITEM_DICTIONARY menyusul di latar belakang (tidak menahan tampilan form).
+    mergeIntoDictionary(readLocalCustomItems());
+    loadCustomItems().then(mergeIntoDictionary);
 
     if (editEventId) {
       if (!ev) throw new Error("Event tidak ditemukan.");
@@ -75,6 +79,65 @@
   }).finally(() => {
     MaximumLoader.hide();
   });
+
+  /* ---------------------------------------------------------------------
+     Barang baru -> dictionary. Tidak ada kolom "Item ID" di form: nama yang
+     tidak ada di dictionary tetap sah, dan setelah submit ia ditambahkan ke
+     dictionary (backend menulis ke sheet ITEM_DICTIONARY + membuat kodenya;
+     salinan lokal disimpan di localStorage agar langsung muncul sebagai
+     saran walau backend belum sempat dibaca ulang).
+     --------------------------------------------------------------------- */
+  const CUSTOM_ITEMS_KEY = "mx_custom_items_v1";
+  const normName = (n) => String(n || "").trim().replace(/\s+/g, " ").toLowerCase();
+
+  function readLocalCustomItems() {
+    try { return JSON.parse(localStorage.getItem(CUSTOM_ITEMS_KEY) || "[]"); } catch (_) { return []; }
+  }
+  function writeLocalCustomItems(list) {
+    try { localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(list)); } catch (_) {}
+  }
+  async function loadCustomItems() {
+    let remote = [];
+    if (typeof CONFIG !== "undefined" && CONFIG.API_URL) {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 4000);
+        const res = await fetch(`${CONFIG.API_URL}?action=getDictionaries`, { signal: ctrl.signal });
+        clearTimeout(timer);
+        const payload = await res.json();
+        if (payload && Array.isArray(payload.items)) remote = payload.items; // baca ulang sheet (segar), termasuk barang baru dari orang lain
+      } catch (err) {
+        console.warn("getDictionaries (refresh) gagal, memakai cache lokal saja.", err);
+      }
+    }
+    return remote.concat(readLocalCustomItems());
+  }
+  function mergeIntoDictionary(list) {
+    const known = new Set(itemDictionary.map((e) => normName(e.namaItemStandar)));
+    (list || []).forEach((e) => {
+      const key = normName(e && e.namaItemStandar);
+      if (!key || known.has(key)) return;
+      known.add(key);
+      itemDictionary.push({
+        itemId: e.itemId || "",
+        kategori: e.kategori || "",
+        namaItemStandar: String(e.namaItemStandar).trim(),
+        satuanStandar: e.satuanStandar || "item",
+      });
+    });
+  }
+  // Dipanggil saat laporan disubmit: nama yang belum ada masuk dictionary.
+  function rememberNewItems(items) {
+    const fresh = [];
+    items.forEach((it) => {
+      if (!it.itemName) return;
+      const known = itemDictionary.some((e) => normName(e.namaItemStandar) === normName(it.itemName));
+      if (!known) fresh.push({ itemId: "", kategori: it.category, namaItemStandar: it.itemName, satuanStandar: "item" });
+    });
+    if (!fresh.length) return;
+    mergeIntoDictionary(fresh);
+    writeLocalCustomItems(readLocalCustomItems().concat(fresh));
+  }
 
   function filterByQuery(list, query, ...fields) {
     const q = query.trim().toLowerCase();
@@ -120,44 +183,33 @@
     if ([...select.options].some((o) => o.value === current)) select.value = current;
   }
 
-  function applyItemSelection(opt, block) {
-    const codeInput = block.querySelector('[data-name="itemCode"]');
+  // Kode item TIDAK lagi diisi manual. Untuk barang yang cocok dengan
+  // dictionary, kodenya disimpan diam-diam di data-item-id pada input nama;
+  // untuk barang baru dikosongkan dan backend yang membuatkan kode +
+  // menambahkan barang itu ke dictionary saat submit.
+  function applyItemSelection(opt, block, { commit } = { commit: true }) {
     const nameInput = block.querySelector('[data-name="itemName"]');
     const categorySelect = block.querySelector('[data-name="category"]');
-    codeInput.value = opt.itemId;
+    nameInput.dataset.itemId = opt.itemId || "";
+    if (!commit) return;
     nameInput.value = opt.namaItemStandar;
     if ([...categorySelect.options].some((o) => o.value === opt.kategori)) categorySelect.value = opt.kategori;
-    setError(codeInput.closest(".field"), "");
     setError(nameInput.closest(".field"), "");
     setError(categorySelect.closest(".field"), "");
   }
 
   function attachItemDictionaryCombo(block) {
-    const codeInput = block.querySelector('[data-name="itemCode"]');
     const nameInput = block.querySelector('[data-name="itemName"]');
     const categorySelect = block.querySelector('[data-name="category"]');
     populateCategorySelect(categorySelect);
-    const optionsFor = (query) => filterByQuery(itemDictionary, query, "itemId", "namaItemStandar", "kategori");
 
-    initCombobox(codeInput, {
-      getOptions: optionsFor,
-      renderLabel: (opt) => `${opt.itemId} — ${opt.namaItemStandar} (${opt.kategori})`,
-      getValue: (opt) => opt.itemId,
-      onSelect: (opt) => applyItemSelection(opt, block),
-    });
-
-    initCombobox(nameInput, {
-      getOptions: optionsFor,
-      renderLabel: (opt) => `${opt.namaItemStandar} — ${opt.itemId} (${opt.kategori})`,
-      getValue: (opt) => opt.namaItemStandar,
-      onSelect: (opt) => applyItemSelection(opt, block),
-    });
-
-    // Keep the two search fields synchronized when the user types an exact Item ID.
-    nameInput.addEventListener("blur", () => {
-      const q = nameInput.value.trim().toLowerCase();
-      const exact = itemDictionary.find((opt) => String(opt.itemId).toLowerCase() === q);
-      if (exact) applyItemSelection(exact, block);
+    initGhostAutocomplete(nameInput, {
+      getEntries: () => itemDictionary,
+      getName: (entry) => entry.namaItemStandar,
+      onResolve: (entry, { commit }) => {
+        if (entry) applyItemSelection(entry, block, { commit });
+        else nameInput.dataset.itemId = ""; // barang baru -> tidak punya kode
+      },
     });
   }
 
@@ -305,8 +357,9 @@
   // status pembayaran, dan tampilan "Sisa DP" ikut ter-sinkron seolah-olah
   // pengguna sendiri yang mengetiknya.
   function fillItemBlock(node, item) {
-    node.querySelector('[data-name="itemCode"]').value = item.itemCode || "";
-    node.querySelector('[data-name="itemName"]').value = item.itemName || "";
+    const nameField = node.querySelector('[data-name="itemName"]');
+    nameField.value = item.itemName || "";
+    nameField.dataset.itemId = item.itemCode || "";
 
     const categorySelect = node.querySelector('[data-name="category"]');
     if ([...categorySelect.options].some((o) => o.value === item.category)) {
@@ -462,7 +515,6 @@
     }
     let ok = true;
     for (const block of blocks) {
-      const codeEl = block.querySelector('[data-name="itemCode"]').closest(".field");
       const nameEl = block.querySelector('[data-name="itemName"]').closest(".field");
       const catEl = block.querySelector('[data-name="category"]').closest(".field");
       const vendorEl = block.querySelector('[data-name="vendor"]').closest(".field");
@@ -474,7 +526,6 @@
       const dpInput = block.querySelector('[data-name="nominalDP"]');
       const dpEl = dpInput.closest(".field");
 
-      setError(codeEl, codeEl.querySelector("input").value.trim() ? "" : "Wajib diisi.");
       setError(nameEl, nameEl.querySelector("input").value.trim() ? "" : "Wajib diisi.");
       setError(catEl, catEl.querySelector("select").value ? "" : "Pilih kategori.");
       setError(vendorEl, vendorEl.querySelector("input").value.trim() ? "" : "Wajib diisi.");
@@ -488,7 +539,7 @@
       const dpOk = statusSelect.value !== "DP" || (Number.isFinite(dp) && dp >= 0 && dp <= (Number.isFinite(price) ? price : Infinity));
       setError(dpEl, dpOk ? "" : "Nominal DP harus antara 0 dan harga total.");
 
-      if (![codeEl, nameEl, catEl, vendorEl, priceEl, statusEl, dpEl].every((el) => !el.classList.contains("has-error"))) {
+      if (![nameEl, catEl, vendorEl, priceEl, statusEl, dpEl].every((el) => !el.classList.contains("has-error"))) {
         ok = false;
       }
     }
@@ -511,7 +562,8 @@
     }
 
     const items = [...itemsContainer.querySelectorAll("[data-item-block]")].map((block) => ({
-      itemCode: block.querySelector('[data-name="itemCode"]').value.trim(),
+      // Kode dari dictionary bila cocok; kosong = barang baru (backend membuat kode + mendaftarkannya ke dictionary).
+      itemCode: block.querySelector('[data-name="itemName"]').dataset.itemId || "",
       itemName: block.querySelector('[data-name="itemName"]').value.trim(),
       category: block.querySelector('[data-name="category"]').value,
       description: block.querySelector('[data-name="description"]').value.trim(),
@@ -629,7 +681,7 @@
       const table = previewEl("table", "items-table preview-table");
 
       const headers = [
-        ["No", "col-no"], ["Item ID", "col-code"], ["Nama Barang", "col-name"], ["Kategori", "col-cat"],
+        ["No", "col-no"], ["Nama Barang", "col-name"], ["Kategori", "col-cat"],
         ["Nama vendor", "col-vendor"], ["Status Pembayaran", "col-status"], ["Harga total (Rp)", "col-price"],
         ["Nominal DP (Rp)", "col-dp"], ["Sisa DP (Rp)", "col-sisa"], ["Keterangan", "col-desc"],
       ];
@@ -658,7 +710,6 @@
         sumSisa += sisa;
         const tr = previewEl("tr", "preview-item-row");
         tr.appendChild(cell(i + 1, "No", "col-no"));
-        tr.appendChild(cell(item.itemCode, "Item ID", "col-code"));
         tr.appendChild(cell(item.itemName, "Nama Barang", "col-name"));
         tr.appendChild(cell(item.category, "Kategori", "col-cat"));
         tr.appendChild(cell(item.vendor, "Nama vendor", "col-vendor"));
@@ -736,6 +787,7 @@
   // Data boleh telat muncul di Analytics/spreadsheet; kalau pengiriman gagal,
   // data tetap aman di antrean dan dicoba lagi otomatis.
   function confirmSubmit(report) {
+    rememberNewItems(report.items);
     const outbox = window.MaximumOutbox;
     const queued = outbox ? outbox.enqueue({ ...report, submittedAt: new Date().toISOString() }) : null;
     if (!queued) {
@@ -759,6 +811,7 @@
 
   // Jalur lama (menunggu server + layar loading). Dipakai hanya sebagai cadangan.
   async function confirmSubmitBlocking(report) {
+    rememberNewItems(report.items);
     // Timestamp dicatat saat benar-benar dikirim (bukan saat pratinjau dibuka).
     report.submittedAt = new Date().toISOString();
     previewError.textContent = "";

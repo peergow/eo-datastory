@@ -471,7 +471,6 @@ fieldset.form-section { min-width: 0; }
 .items-table thead .optional { font-weight: 400; }
 
 .items-table th.col-no,   .items-table td.col-no   { width: 44px; text-align: center; }
-.items-table th.col-code, .items-table td.col-code { width: 140px; }
 .items-table th.col-name, .items-table td.col-name { width: 200px; }
 .items-table th.col-cat,  .items-table td.col-cat  { width: 135px; }
 .items-table th.col-vendor, .items-table td.col-vendor { width: 160px; }
@@ -490,13 +489,13 @@ fieldset.form-section { min-width: 0; }
   background: color-mix(in srgb, var(--c-item) 7%, var(--paper-raised));
 }
 
-/* Dua kolom pertama (No, Item ID) tetap terlihat saat tabel di-scroll ke samping. */
+/* Dua kolom pertama (No, Nama Barang) tetap terlihat saat tabel di-scroll ke samping. */
 .items-table .col-no,
-.items-table .col-code { position: sticky; z-index: 2; }
+.items-table .col-name { position: sticky; z-index: 2; }
 .items-table .col-no   { left: 0; }
-.items-table .col-code { left: 44px; }
+.items-table .col-name { left: 44px; }
 .items-table thead th.col-no,
-.items-table thead th.col-code { z-index: 5; }
+.items-table thead th.col-name { z-index: 5; }
 /* Sel yang sedang dipakai (dropdown terbuka) harus di atas baris di bawahnya. */
 .items-table td:focus-within { z-index: 30; }
 
@@ -648,3 +647,29 @@ fieldset.form-section { min-width: 0; }
 
 /* Kontras nomor baris pada dark mode. */
 :root[data-theme="dark"] .items-table td.col-no { color: var(--ink); }
+/* Ghost-text autocomplete (Nama Barang) ------------------------------------ */
+.ghost-wrapper { position: relative; display: flex; }
+.ghost-wrapper .ghost-input { flex: 1; min-width: 0; }
+.ghost-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  white-space: pre;
+  pointer-events: none;
+  z-index: 1;
+}
+.ghost-overlay .ghost-inner { display: inline-block; will-change: transform; }
+.ghost-overlay .ghost-typed { color: transparent; }
+.ghost-overlay .ghost-rest {
+  color: var(--muted, #8a8880);
+  opacity: 0.75;
+  pointer-events: auto;   /* ketuk saran untuk menerima (HP tidak punya Tab) */
+  cursor: pointer;
+}
+.ghost-new-badge {
+  display: none;
+  margin: 2px 4px 0;
+  font-size: 0.7rem;
+  color: var(--muted, #8a8880);
+}
+.ghost-new-badge.show { display: block; }

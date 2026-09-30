@@ -2,35 +2,77 @@
  * Code.gs — Google Apps Script backend for MAXIMUM THE ULTIMATE.
  *
  * IMPORTANT:
- * - Data is written ONLY to the existing `EVENTS` and `ITEMS` sheets.
- * - ITEM_DICTIONARY and VENDOR_DICTIONARY are NOT created here.
- * - The website uses the bundled dictionary data generated from the supplied
- *   Item_Dictionary.xlsx and Vendor_Dictionary.xlsx files.
+ * - Data (submit/edit) is written to the existing `EVENTS` and `ITEMS`
+ *   sheets.
+ * - VENDOR_DICTIONARY adalah sheet referensi READ-ONLY (backend hanya
+ *   membaca).
+ * - ITEM_DICTIONARY dibaca LIVE untuk dropdown/saran di form, dan HANYA
+ *   ditulis satu hal: barang BARU yang diketik bebas di form (nama yang
+ *   belum ada di dictionary) ditambahkan sebagai baris baru saat submit —
+ *   lihat registerNewItems_(). Baris yang sudah ada tidak pernah diubah
+ *   atau dihapus.
  *
- * REVISI: fitur Edit Laporan + penyimpanan Status Pembayaran (Lunas/DP) +
- * caching supaya "Analytics" & "Daftar Event" tidak selalu membaca ulang
- * seluruh spreadsheet dari nol setiap request (lihat catatan CACHING di
- * bawah, dan SETUP_FIX.md untuk perubahan kolom sheet ITEMS yang WAJIB
- * dilakukan manual satu kali).
+ * REVISI (skema final, sesuai spreadsheet "Data Input" yang sebenarnya):
+ * - Kolom QUANTITY DIHAPUS TOTAL dari sheet ITEMS dan dari kode ini. Harga
+ *   difokuskan ke tingkat produk+vendor (TOTAL PRICE), bukan per pcs.
+ * - Kolom ITEMS A-J: EVENT ID, ITEM ID, ITEM NAME, CATEGORY, VENDOR,
+ *   TOTAL PRICE, KETERANGAN, PAYMENT STATUS, NOMINAL DP, SISA DP.
+ * - NOMINAL DP & SISA DP diturunkan otomatis di backend dari PAYMENT STATUS:
+ *     Lunas       -> NOMINAL DP = TOTAL PRICE, SISA DP = 0
+ *     Belum Bayar -> NOMINAL DP = 0,           SISA DP = TOTAL PRICE
+ *     DP          -> NOMINAL DP = nilai manual (diklem 0..TOTAL PRICE),
+ *                    SISA DP = TOTAL PRICE - NOMINAL DP
+ *   Frontend TIDAK perlu (dan sebaiknya tidak) mengirim SISA DP — backend
+ *   yang menghitung & menyimpannya supaya konsisten.
+ * - REVISI (tanpa kolom Item ID di form): frontend hanya mengirim nama
+ *   barang. itemCode terisi bila nama cocok dengan dictionary; bila kosong
+ *   berarti barang baru -> backend membuat kode (mis. LGT-N001) dan
+ *   menambahkannya ke ITEM_DICTIONARY, sehingga muncul sebagai saran
+ *   ghost-text di input berikutnya.
+ * - Dropdown "Nama Item" & "Nama Vendor" di form Input Report dibaca LIVE
+ *   dari sheet ITEM_DICTIONARY / VENDOR_DICTIONARY lewat
+ *   ?action=getDictionaries (lihat readDictionaries_() di bawah). Tidak
+ *   ada caching untuk dictionary supaya edit di sheet langsung kelihatan.
+ * - Caching supaya "Analytics" & "Daftar Event" tidak selalu membaca ulang
+ *   seluruh spreadsheet dari nol setiap request. Cache di-invalidate
+ *   otomatis setiap ada submit/update baru lewat doPost.
  */
 
-const SPREADSHEET_ID = "PASTE_YOUR_SPREADSHEET_ID_HERE";
+const SPREADSHEET_ID = "19r-trzLpZchJeL-VpZAGf6Oj4FSm_Iv_byC_LJ-iiN0";
 const EVENTS_SHEET_NAME = "EVENTS";
 const ITEMS_SHEET_NAME = "ITEMS";
+const ITEM_DICTIONARY_SHEET_NAME = "ITEM_DICTIONARY";
+const VENDOR_DICTIONARY_SHEET_NAME = "VENDOR_DICTIONARY";
 
 const EVENTS_HEADERS = [
   "EVENT ID", "USER", "EVENT NAME", "CLIENT", "EVENT PRICE", "EVENT DATE",
   "EVENT DAYS", "GR", "CITY", "COUNTRY", "SUBMITTED AT",
 ];
 
-// NOTE: "PAYMENT STATUS" & "NOMINAL DP" ditambahkan DI AKHIR (bukan di
-// tengah) supaya kolom lama (EVENT ID..KETERANGAN) tidak bergeser posisi.
-// WAJIB: tambahkan 2 kolom ini di sheet ITEMS Anda, persis di kolom I & J,
-// dengan header persis "PAYMENT STATUS" dan "NOMINAL DP". Lihat SETUP_FIX.md.
+// Skema ITEMS final (TANPA QUANTITY) — persis kolom A-J di spreadsheet.
 const ITEMS_HEADERS = [
-  "EVENT ID", "ITEM ID", "ITEM NAME", "CATEGORY", "VENDOR", "QUANTITY",
-  "TOTAL PRICE", "KETERANGAN", "PAYMENT STATUS", "NOMINAL DP",
+  "EVENT ID", "ITEM ID", "ITEM NAME", "CATEGORY", "VENDOR", "TOTAL PRICE",
+  "KETERANGAN", "PAYMENT STATUS", "NOMINAL DP", "SISA DP",
 ];
+
+// Kolom ITEM_DICTIONARY: ITEM ID, KATEGORI, NAMA ITEM STANDAR, SATUAN STANDAR.
+const ITEM_DICTIONARY_HEADERS = [
+  "ITEM ID", "KATEGORI", "NAMA ITEM STANDAR", "SATUAN STANDAR",
+];
+
+// Kolom VENDOR_DICTIONARY: VENDOR ID, NAMA VENDOR.
+const VENDOR_DICTIONARY_HEADERS = ["VENDOR ID", "NAMA VENDOR"];
+
+const VALID_PAYMENT_STATUSES = ["Lunas", "DP", "Belum Bayar"];
+
+// Awalan kode untuk barang baru, mengikuti kode dictionary bawaan
+// (LED-001, LGT-001, ...). Kode barang baru berbentuk "LGT-N001" supaya
+// tidak pernah bentrok dengan kode bawaan/manual. Kategori di luar daftar ini
+// memakai awalan "OTH".
+const CATEGORY_PREFIX_ = {
+  LED: "LED", Lighting: "LGT", Audio: "AUD", Rigging: "RIG", Multimedia: "MMD",
+  Effect: "EFF", Documentation: "DOC", Genset: "GEN", Internet: "NET",
+};
 
 function ss_() {
   if (!SPREADSHEET_ID || SPREADSHEET_ID === "PASTE_YOUR_SPREADSHEET_ID_HERE") {
@@ -56,7 +98,7 @@ function setup() {
     ok: true,
     eventsSheet: eventsSheet.getName(),
     itemsSheet: itemsSheet.getName(),
-    message: "Backend terhubung ke EVENTS dan ITEMS. Dictionary tab tidak dibuat.",
+    message: "Backend terhubung ke EVENTS dan ITEMS. ITEM_DICTIONARY hanya ditambah baris untuk barang baru dari form.",
   };
 }
 
@@ -67,12 +109,155 @@ function jsonResponse_(obj) {
 }
 
 /* ---------------------------------------------------------------------- */
+/* Dictionaries — dibaca LIVE dari sheet ITEM_DICTIONARY & VENDOR_DICTIONARY */
+/* setiap kali diminta (tanpa cache), supaya edit manual di sheet langsung  */
+/* muncul di dropdown form Input Report tanpa perlu redeploy Apps Script.  */
+/* Satu-satunya penulisan: registerNewItems_() menambah barang baru.       */
+/* ---------------------------------------------------------------------- */
+function readDictionaries_() {
+  const ss = ss_();
+
+  const items = [];
+  const itemSheet = ss.getSheetByName(ITEM_DICTIONARY_SHEET_NAME);
+  if (itemSheet) {
+    const rows = itemSheet.getDataRange().getValues();
+    // Kolom: 0 ITEM ID, 1 KATEGORI, 2 NAMA ITEM STANDAR, 3 SATUAN STANDAR.
+    rows.slice(1)
+      .filter((row) => row[0] || row[2])
+      .forEach((row) => {
+        items.push({
+          itemId: String(row[0] || ""),
+          kategori: String(row[1] || ""),
+          namaItemStandar: String(row[2] || ""),
+          satuanStandar: String(row[3] || ""),
+        });
+      });
+  }
+
+  const vendors = [];
+  const vendorSheet = ss.getSheetByName(VENDOR_DICTIONARY_SHEET_NAME);
+  if (vendorSheet) {
+    const rows = vendorSheet.getDataRange().getValues();
+    // Kolom: 0 VENDOR ID, 1 NAMA VENDOR.
+    rows.slice(1)
+      .filter((row) => row[0] || row[1])
+      .forEach((row) => {
+        vendors.push({
+          vendorId: String(row[0] || ""),
+          namaVendor: String(row[1] || ""),
+          kategoriLayanan: "",
+        });
+      });
+  }
+
+  return { items, vendors };
+}
+
+/* ---------------------------------------------------------------------- */
+/* Barang baru -> ITEM_DICTIONARY                                          */
+/* ---------------------------------------------------------------------- */
+function normalizeName_(n) {
+  return String(n || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
+ * Dipanggil SEBELUM item ditulis ke sheet ITEMS. Hanya menyentuh item yang
+ * itemCode-nya kosong (barang yang diketik bebas, tidak cocok dictionary):
+ *  - namanya sudah ada di ITEM_DICTIONARY (mis. dibuat orang lain barusan)
+ *    -> pakai kodenya, tidak menambah baris;
+ *  - belum ada -> buat kode baru (PREFIX-N001, ...) dan tambahkan baris ke
+ *    ITEM_DICTIONARY (satuan default "item").
+ * itemCode di objek item diisi in-place, jadi buildItemRow_() otomatis
+ * menulis kode yang benar ke kolom ITEM ID di sheet ITEMS.
+ * Item yang sudah punya itemCode tidak diubah sama sekali.
+ */
+function registerNewItems_(items) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.some((it) => !String(it.itemCode || "").trim())) return;
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const ss = ss_();
+    let sh = ss.getSheetByName(ITEM_DICTIONARY_SHEET_NAME);
+    if (!sh) {
+      sh = ss.insertSheet(ITEM_DICTIONARY_SHEET_NAME);
+      sh.getRange(1, 1, 1, ITEM_DICTIONARY_HEADERS.length).setValues([ITEM_DICTIONARY_HEADERS]);
+      sh.setFrozenRows(1);
+    }
+
+    const rows = sh.getLastRow() > 1
+      ? sh.getRange(2, 1, sh.getLastRow() - 1, ITEM_DICTIONARY_HEADERS.length).getValues()
+      : [];
+
+    const idByName = new Map();
+    const counters = {};
+    rows.forEach((r) => {
+      const name = normalizeName_(r[2]);
+      if (name && r[0] && !idByName.has(name)) idByName.set(name, String(r[0]));
+      const m = /^([A-Z]+)-N(\d+)$/.exec(String(r[0]));
+      if (m) counters[m[1]] = Math.max(counters[m[1]] || 0, Number(m[2]));
+    });
+
+    const toAppend = [];
+    list.forEach((it) => {
+      if (String(it.itemCode || "").trim()) return;
+      const key = normalizeName_(it.itemName);
+      if (!key) return;
+
+      if (idByName.has(key)) {
+        it.itemCode = idByName.get(key);
+        return;
+      }
+
+      const prefix = CATEGORY_PREFIX_[it.category] || "OTH";
+      counters[prefix] = (counters[prefix] || 0) + 1;
+      const id = prefix + "-N" + String(counters[prefix]).padStart(3, "0");
+      idByName.set(key, id);
+      it.itemCode = id;
+      toAppend.push([id, it.category || "", String(it.itemName).trim(), "item"]);
+    });
+
+    if (toAppend.length) {
+      sh.getRange(sh.getLastRow() + 1, 1, toAppend.length, ITEM_DICTIONARY_HEADERS.length)
+        .setValues(toAppend);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Turunan PAYMENT STATUS -> NOMINAL DP & SISA DP                          */
+/* ---------------------------------------------------------------------- */
+function derivePaymentFields_(paymentStatus, totalPrice, rawNominalDP) {
+  const price = Number(totalPrice) || 0;
+  const status = VALID_PAYMENT_STATUSES.includes(paymentStatus) ? paymentStatus : "Belum Bayar";
+
+  let nominalDP;
+  if (status === "Lunas") {
+    nominalDP = price;
+  } else if (status === "Belum Bayar") {
+    nominalDP = 0;
+  } else {
+    // DP: pakai nilai manual dari form, diklem ke rentang 0..price.
+    nominalDP = Number(rawNominalDP) || 0;
+    if (nominalDP < 0) nominalDP = 0;
+    if (nominalDP > price) nominalDP = price;
+  }
+
+  const sisaDP = Math.max(0, price - nominalDP);
+  return { paymentStatus: status, nominalDP, sisaDP };
+}
+
+/* ---------------------------------------------------------------------- */
 /* CACHING — supaya "Analytics" & "Daftar Event" tidak membaca ulang       */
 /* seluruh sheet dari nol setiap kali dibuka (ini salah satu penyebab      */
 /* utama "memuat data lama"). Cache di-invalidate otomatis setiap ada      */
-/* submit/update baru lewat doPost.                                       */
+/* submit/update baru lewat doPost. Dictionary sengaja TIDAK dicache di    */
+/* sini supaya edit manual di sheet dictionary langsung muncul.            */
 /* ---------------------------------------------------------------------- */
-const EVENTS_CACHE_KEY = "mx_events_cache_v2";
+const EVENTS_CACHE_KEY = "mx_events_cache_v3";
 const EVENTS_CACHE_TTL_SECONDS = 120; // 2 menit
 
 function getEventsCached_() {
@@ -170,10 +355,13 @@ function doGet(e) {
       });
     }
 
+    // Dictionary item & vendor, dibaca LIVE (tanpa cache) dari sheet
+    // ITEM_DICTIONARY & VENDOR_DICTIONARY — dipakai oleh saran ghost-text
+    // "Nama Barang" & dropdown searchable "Nama Vendor" di form Input Report.
+    // Barang baru dari form otomatis ikut karena sudah ditulis ke sheet.
     if (action === "getDictionaries") {
-      // Keep dictionaries outside Data Input. Frontend loadDictionaries()
-      // falls back to its bundled 204-item / 15-vendor reference data.
-      return jsonResponse_({ ok: true, items: [], vendors: [] });
+      const dict = readDictionaries_();
+      return jsonResponse_({ ok: true, items: dict.items, vendors: dict.vendors });
     }
 
     return jsonResponse_({
@@ -197,7 +385,7 @@ function readAllEvents_() {
     .map((row) => ({
       eventId: String(row[0]),
       user: row[1],
-      event: row[2],
+      event: String(row[2] || ""),
       client: row[3],
       eventPrice: Number(row[4]) || 0,
       eventDate: formatDateOnly_(row[5]),
@@ -214,6 +402,9 @@ function readAllEvents_() {
   const byId = new Map(events.map((ev) => [ev.eventId, ev]));
   const itemRows = itemsSheet.getDataRange().getValues();
 
+  // Kolom ITEMS (tanpa QUANTITY):
+  // 0 EVENT ID, 1 ITEM ID, 2 ITEM NAME, 3 CATEGORY, 4 VENDOR, 5 TOTAL PRICE,
+  // 6 KETERANGAN, 7 PAYMENT STATUS, 8 NOMINAL DP, 9 SISA DP.
   itemRows.slice(1)
     .filter((row) => row[0])
     .forEach((row) => {
@@ -221,23 +412,22 @@ function readAllEvents_() {
       const ev = byId.get(eventId);
       if (!ev) return;
 
-      const totalPrice = Number(row[6]) || 0;
-      // Kolom baru (index 8 & 9) mungkin belum ada nilainya untuk baris
-      // lama yang disubmit sebelum revisi ini — dibiarkan kosong/"" dan
-      // akan ditandai "Tidak Diketahui" oleh frontend (ensurePaymentFields
-      // di js/data.js), bukan ditebak jadi Lunas/DP.
-      const paymentStatus = row[8] ? String(row[8]) : "";
-      const nominalDP = paymentStatus ? (Number(row[9]) || 0) : 0;
-      const sisaDP = paymentStatus === "Lunas" ? 0 : Math.max(0, totalPrice - nominalDP);
+      const totalPrice = Number(row[5]) || 0;
+      const paymentStatus = row[7] ? String(row[7]) : "";
+      // Baris lama tanpa PAYMENT STATUS dibiarkan kosong — ditandai
+      // "Tidak Diketahui" oleh frontend, bukan ditebak jadi Lunas/DP.
+      const nominalDP = paymentStatus ? (Number(row[8]) || 0) : 0;
+      const sisaDP = paymentStatus
+        ? (row[9] !== "" && row[9] != null ? Number(row[9]) || 0 : Math.max(0, totalPrice - nominalDP))
+        : 0;
 
       const item = {
         itemCode: row[1],
         itemName: row[2],
         category: row[3],
-        vendor: row[4] || "",
-        quantity: Number(row[5]) || 0,
+        vendor: String(row[4] || ""),
         totalPrice: totalPrice,
-        description: row[7] || "",
+        description: row[6] || "",
       };
       if (paymentStatus) {
         item.paymentStatus = paymentStatus;
@@ -255,6 +445,27 @@ function formatDateOnly_(value) {
     return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
   }
   return String(value || "");
+}
+
+/* ---------------------------------------------------------------------- */
+/* Susun satu baris ITEMS siap tulis dari sebuah item payload              */
+/* ---------------------------------------------------------------------- */
+function buildItemRow_(eventId, item) {
+  const totalPrice = Number(item.totalPrice) || 0;
+  const derived = derivePaymentFields_(item.paymentStatus, totalPrice, item.nominalDP);
+
+  return [
+    eventId,
+    item.itemCode,
+    item.itemName,
+    item.category,
+    item.vendor,
+    totalPrice,
+    item.description || "",
+    derived.paymentStatus,
+    derived.nominalDP,
+    derived.sisaDP,
+  ];
 }
 
 /* ---------------------------------------------------------------------- */
@@ -281,8 +492,9 @@ function doPost(e) {
     // tempat (bukan menambah baris baru). Dipakai oleh tombol "Edit" di
     // halaman Daftar Event.
     if (payload.eventId && payload.isEdit) {
+      registerNewItems_(payload.items);
       const result = updateEvent_(payload, eventsSheet, itemsSheet);
-      if (result.ok) invalidateEventsCache_();
+      if (result.ok) { invalidateEventsCache_(); scheduleSyncSoon_(); }
       return jsonResponse_(result);
     }
 
@@ -304,6 +516,10 @@ function doPost(e) {
       });
     }
 
+    // Barang baru didaftarkan ke ITEM_DICTIONARY + itemCode-nya terisi,
+    // SEBELUM baris ITEMS ditulis.
+    registerNewItems_(payload.items);
+
     eventsSheet.appendRow([
       payload.eventId,
       payload.user,
@@ -319,21 +535,11 @@ function doPost(e) {
     ]);
 
     (Array.isArray(payload.items) ? payload.items : []).forEach((item) => {
-      itemsSheet.appendRow([
-        payload.eventId,
-        item.itemCode,
-        item.itemName,
-        item.category,
-        item.vendor,
-        Number(item.quantity) || 0,
-        Number(item.totalPrice) || 0,
-        item.description || "",
-        item.paymentStatus || "",
-        Number(item.nominalDP) || 0,
-      ]);
+      itemsSheet.appendRow(buildItemRow_(payload.eventId, item));
     });
 
     invalidateEventsCache_();
+    scheduleSyncSoon_();
     return jsonResponse_({ ok: true, eventId: payload.eventId });
   } catch (err) {
     return jsonResponse_({ ok: false, error: String(err.message || err) });
@@ -389,18 +595,7 @@ function updateEvent_(payload, eventsSheet, itemsSheet) {
   }
 
   (Array.isArray(payload.items) ? payload.items : []).forEach((item) => {
-    itemsSheet.appendRow([
-      payload.eventId,
-      item.itemCode,
-      item.itemName,
-      item.category,
-      item.vendor,
-      Number(item.quantity) || 0,
-      Number(item.totalPrice) || 0,
-      item.description || "",
-      item.paymentStatus || "",
-      Number(item.nominalDP) || 0,
-    ]);
+    itemsSheet.appendRow(buildItemRow_(payload.eventId, item));
   });
 
   return { ok: true, eventId: payload.eventId, updated: true };
@@ -431,7 +626,7 @@ function makeEventId_(eventsSheet, eventDate) {
     });
   }
 
-  return `${month}-ke-${String(count + 1).padStart(2, "0")}-ke-${year}`;
+  return `${String(count + 1).padStart(3, "0")}-${month}-${year}`;
 }
 
 function validateReport_(p) {
@@ -467,14 +662,15 @@ function validateReport_(p) {
   }
 
   for (const item of p.items || []) {
-    if (!item.itemCode || !item.itemName || !item.category || !item.vendor) {
-      return "Every item needs itemCode, itemName, category, and vendor.";
-    }
-    if (typeof item.quantity !== "number" || item.quantity <= 0) {
-      return "Every item's quantity must be a positive number.";
+    // itemCode BOLEH kosong: barang baru dibuatkan kodenya oleh registerNewItems_().
+    if (!item.itemName || !item.category || !item.vendor) {
+      return "Every item needs itemName, category, and vendor.";
     }
     if (typeof item.totalPrice !== "number" || item.totalPrice < 0) {
       return "Every item's totalPrice must be a non-negative number.";
+    }
+    if (item.paymentStatus && !VALID_PAYMENT_STATUSES.includes(item.paymentStatus)) {
+      return "Every item's paymentStatus must be one of: Lunas, DP, Belum Bayar.";
     }
   }
 
