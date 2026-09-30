@@ -674,6 +674,12 @@ async function submitEvent(report) {
     if (payload && payload.ok === false) {
       throw new Error(payload.error || "Backend menolak data.");
     }
+    // Picu sync sheet -> Firestore di eksekusi Apps Script TERPISAH, tanpa
+    // menunggu hasilnya. Submit tetap cepat; kegagalan di sini diabaikan
+    // (jaring pengaman trigger tetap menyinkronkan nanti).
+    try {
+      fetch(CONFIG.API_URL + "?action=sync", { method: "GET", mode: "no-cors", keepalive: true }).catch(function () {});
+    } catch (_) {}
     return payload;
   }
   if (report.isEdit) {

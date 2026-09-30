@@ -13,3 +13,4 @@ const AUTH_CONFIG = {
   // Key sessionStorage yang menandai user sudah login di tab browser ini.
   SESSION_KEY: "maximum_auth_session",
 };
+
