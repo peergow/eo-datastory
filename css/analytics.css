@@ -88,6 +88,22 @@
 }
 @media (max-width: 700px) {
   .filter-bar { position: static; }
+
+  /* Dari / Sampai berdampingan (label di atas kolom), Terapkan selebar layar */
+  .filter-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+    width: 100%;
+    align-items: end;
+  }
+  .filter-group label:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+  .filter-group input#filter-from    { grid-column: 1; grid-row: 2; }
+  .filter-group label:nth-of-type(2) { grid-column: 2; grid-row: 1; }
+  .filter-group input#filter-to      { grid-column: 2; grid-row: 2; }
+  .filter-group input[type="date"] { width: 100%; min-width: 0; }
+  .btn-apply-filter { grid-column: 1 / -1; grid-row: 3; margin-top: 8px; padding: 10px 14px; }
+  .filter-presets button { white-space: nowrap; }
 }
 
 /* Progress rail ----------------------------------------------------------- */
@@ -190,6 +206,21 @@
 .story-hero .glance-strip .label { font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
 .story-hero .glance-strip div:nth-child(4) .num { color: var(--c-payment); }
 .story-hero .glance-strip div:nth-child(5) .num { color: var(--c-attention); }
+
+/* HP: 5 angka ringkasan jadi grid 2 kolom yang rata, bukan barisan acak */
+@media (max-width: 600px) {
+  .story-hero .last-updated { margin-top: 28px; }
+  .story-hero .glance-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px 16px;
+    margin-top: 36px;
+  }
+  .story-hero .glance-strip .num { font-size: clamp(1.9rem, 9vw, 2.4rem); white-space: nowrap; }
+  .story-hero .glance-strip .label { font-size: 0.78rem; }
+  /* angka ke-5 (Outstanding) sendirian di baris terakhir: biarkan selebar penuh */
+  .story-hero .glance-strip div:nth-child(5) { grid-column: 1 / -1; }
+}
 
 .story-hero .hero-summary {
   margin-top: 28px;

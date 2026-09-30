@@ -12,6 +12,23 @@
  *   lihat registerNewItems_(). Baris yang sudah ada tidak pernah diubah
  *   atau dihapus.
  *
+ * REVISI (UPDATED AT — "Terakhir diperbarui" ikut berubah saat EDIT):
+ * - Sheet EVENTS punya kolom baru ke-12: "UPDATED AT" (kolom L).
+ *   Saat event dibuat, nilainya sama dengan SUBMITTED AT. Saat event
+ *   diedit (updateEvent_), nilainya diisi ulang dengan waktu SERVER saat
+ *   itu, sedangkan SUBMITTED AT asli tetap dipertahankan.
+ * - Waktu diambil dari server (bukan dari jam HP/laptop pengguna) supaya
+ *   konsisten. Kolom L dibuat otomatis (header + lebar sheet) oleh
+ *   ensureUpdatedAtColumn_() saat submit/edit pertama, jadi tidak wajib
+ *   ditambah manual. Baris lama yang kolom L-nya kosong otomatis memakai
+ *   SUBMITTED AT sebagai UPDATED AT.
+ * - readAllEvents_() sekarang mengembalikan field `updatedAt`, dan
+ *   getEventsList ikut mengirimkannya. Sync.gs TIDAK perlu diubah: data
+ *   event dibaca lewat readAllEvents_() sehingga `updatedAt` otomatis
+ *   ikut tersalin ke Firestore.
+ * - Perlu deploy versi baru (Deploy -> Manage deployments -> Edit -> New
+ *   version) supaya URL /exec yang sama memakai kode ini.
+ *
  * REVISI (skema final, sesuai spreadsheet "Data Input" yang sebenarnya):
  * - Kolom QUANTITY DIHAPUS TOTAL dari sheet ITEMS dan dari kode ini. Harga
  *   difokuskan ke tingkat produk+vendor (TOTAL PRICE), bukan per pcs.
@@ -46,7 +63,7 @@ const VENDOR_DICTIONARY_SHEET_NAME = "VENDOR_DICTIONARY";
 
 const EVENTS_HEADERS = [
   "EVENT ID", "USER", "EVENT NAME", "CLIENT", "EVENT PRICE", "EVENT DATE",
-  "EVENT DAYS", "GR", "CITY", "COUNTRY", "SUBMITTED AT",
+  "EVENT DAYS", "GR", "CITY", "COUNTRY", "SUBMITTED AT", "UPDATED AT",
 ];
 
 // Skema ITEMS final (TANPA QUANTITY) — persis kolom A-J di spreadsheet.
@@ -92,13 +109,32 @@ function ensureSheets_() {
   return { eventsSheet, itemsSheet };
 }
 
+/**
+ * Pastikan sheet EVENTS punya kolom UPDATED AT (kolom ke-12): melebarkan
+ * sheet bila kolomnya belum ada, dan mengisi header bila selnya kosong.
+ * Aman dipanggil berulang. Dipanggil sebelum menulis (submit/edit) —
+ * tanpa ini, menulis 12 kolom ke sheet yang baru punya 11 kolom akan error.
+ */
+function ensureUpdatedAtColumn_(eventsSheet) {
+  const col = EVENTS_HEADERS.indexOf("UPDATED AT") + 1;
+  const maxCols = eventsSheet.getMaxColumns();
+  if (maxCols < col) {
+    eventsSheet.insertColumnsAfter(maxCols, col - maxCols);
+  }
+  const headerCell = eventsSheet.getRange(1, col);
+  if (!String(headerCell.getValue() || "").trim()) {
+    headerCell.setValue("UPDATED AT");
+  }
+}
+
 function setup() {
   const { eventsSheet, itemsSheet } = ensureSheets_();
+  ensureUpdatedAtColumn_(eventsSheet);
   return {
     ok: true,
     eventsSheet: eventsSheet.getName(),
     itemsSheet: itemsSheet.getName(),
-    message: "Backend terhubung ke EVENTS dan ITEMS. ITEM_DICTIONARY hanya ditambah baris untuk barang baru dari form.",
+    message: "Backend terhubung ke EVENTS dan ITEMS (kolom UPDATED AT siap). ITEM_DICTIONARY hanya ditambah baris untuk barang baru dari form.",
   };
 }
 
@@ -257,7 +293,9 @@ function derivePaymentFields_(paymentStatus, totalPrice, rawNominalDP) {
 /* submit/update baru lewat doPost. Dictionary sengaja TIDAK dicache di    */
 /* sini supaya edit manual di sheet dictionary langsung muncul.            */
 /* ---------------------------------------------------------------------- */
-const EVENTS_CACHE_KEY = "mx_events_cache_v3";
+// Versi cache dinaikkan (v3 -> v4) karena bentuk data event bertambah field
+// `updatedAt`; cache lama (tanpa field itu) otomatis diabaikan.
+const EVENTS_CACHE_KEY = "mx_events_cache_v4";
 const EVENTS_CACHE_TTL_SECONDS = 120; // 2 menit
 
 function getEventsCached_() {
@@ -296,6 +334,13 @@ function doGet(e) {
   try {
     const action = e && e.parameter ? e.parameter.action : null;
 
+    // Dipanggil browser SETELAH submit berhasil (fire-and-forget), supaya
+    // doPost tetap cepat dan sync ke Firestore jalan di eksekusi terpisah.
+    // Aman dipanggil berulang: kalau data tidak berubah, sync di-skip (hash).
+    if (action === "sync") {
+      return jsonResponse_(syncSafe_());
+    }
+
     if (action === "getAnalytics") {
       return jsonResponse_({ ok: true, events: getEventsCached_() });
     }
@@ -315,6 +360,7 @@ function doGet(e) {
         eventDays: ev.eventDays,
         eventPrice: ev.eventPrice,
         submittedAt: ev.submittedAt,
+        updatedAt: ev.updatedAt,
         itemCount: ev.items.length,
       }));
       return jsonResponse_({ ok: true, events: list });
@@ -382,22 +428,33 @@ function readAllEvents_() {
   const eventRows = eventsSheet.getDataRange().getValues();
   const events = eventRows.slice(1)
     .filter((row) => row[0])
-    .map((row) => ({
-      eventId: String(row[0]),
-      user: row[1],
-      event: String(row[2] || ""),
-      client: row[3],
-      eventPrice: Number(row[4]) || 0,
-      eventDate: formatDateOnly_(row[5]),
-      eventDays: Number(row[6]) || 0,
-      gr: Number(row[7]) || 0,
-      city: row[8],
-      country: row[9],
-      submittedAt: row[10] instanceof Date
+    .map((row) => {
+      const submittedAt = row[10] instanceof Date
         ? row[10].toISOString()
-        : String(row[10] || ""),
-      items: [],
-    }));
+        : String(row[10] || "");
+      // UPDATED AT (kolom L). Kosong (baris lama / kolom belum ada) ->
+      // pakai SUBMITTED AT, artinya "belum pernah diedit".
+      const updatedRaw = row[11];
+      const updatedAt = updatedRaw instanceof Date
+        ? updatedRaw.toISOString()
+        : (String(updatedRaw || "") || submittedAt);
+
+      return {
+        eventId: String(row[0]),
+        user: row[1],
+        event: String(row[2] || ""),
+        client: row[3],
+        eventPrice: Number(row[4]) || 0,
+        eventDate: formatDateOnly_(row[5]),
+        eventDays: Number(row[6]) || 0,
+        gr: Number(row[7]) || 0,
+        city: row[8],
+        country: row[9],
+        submittedAt: submittedAt,
+        updatedAt: updatedAt,
+        items: [],
+      };
+    });
 
   const byId = new Map(events.map((ev) => [ev.eventId, ev]));
   const itemRows = itemsSheet.getDataRange().getValues();
@@ -487,6 +544,7 @@ function doPost(e) {
     }
 
     const { eventsSheet, itemsSheet } = ensureSheets_();
+    ensureUpdatedAtColumn_(eventsSheet);
 
     // ---- EDIT: eventId sudah ada dan payload.isEdit=true -> update di
     // tempat (bukan menambah baris baru). Dipakai oleh tombol "Edit" di
@@ -520,6 +578,9 @@ function doPost(e) {
     // SEBELUM baris ITEMS ditulis.
     registerNewItems_(payload.items);
 
+    // Event baru: UPDATED AT = SUBMITTED AT (belum pernah diedit).
+    const submittedAt = payload.submittedAt || new Date().toISOString();
+
     eventsSheet.appendRow([
       payload.eventId,
       payload.user,
@@ -531,7 +592,8 @@ function doPost(e) {
       payload.gr,
       payload.city,
       payload.country,
-      payload.submittedAt || new Date().toISOString(),
+      submittedAt,
+      submittedAt,
     ]);
 
     (Array.isArray(payload.items) ? payload.items : []).forEach((item) => {
@@ -548,8 +610,9 @@ function doPost(e) {
 
 /**
  * Update satu event yang sudah ada: timpa barisnya di EVENTS (SUBMITTED AT
- * asli dipertahankan, tidak ditimpa), lalu ganti seluruh baris ITEMS milik
- * eventId tsb dengan daftar item yang baru dikirim dari form.
+ * asli dipertahankan, tidak ditimpa; UPDATED AT diisi waktu server saat
+ * ini), lalu ganti seluruh baris ITEMS milik eventId tsb dengan daftar
+ * item yang baru dikirim dari form.
  */
 function updateEvent_(payload, eventsSheet, itemsSheet) {
   const data = eventsSheet.getDataRange().getValues();
@@ -579,6 +642,7 @@ function updateEvent_(payload, eventsSheet, itemsSheet) {
     payload.city,
     payload.country,
     originalSubmittedAt,
+    new Date().toISOString(),   // UPDATED AT — waktu server saat edit disimpan
   ]]);
 
   // Ganti semua baris ITEMS milik eventId ini: simpan baris milik event

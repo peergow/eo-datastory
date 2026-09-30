@@ -596,6 +596,9 @@
       country: form.country.value.trim(),
       items,
       submittedAt: new Date().toISOString(),
+      // Diisi ulang di setiap simpan (submit baru DAN edit) — dipakai label
+      // "Terakhir diperbarui" & urutan di Daftar Event.
+      updatedAt: new Date().toISOString(),
     };
 
     // Jangan langsung kirim: tampilkan pratinjau dulu. Pengiriman sebenarnya
@@ -789,7 +792,7 @@
   function confirmSubmit(report) {
     rememberNewItems(report.items);
     const outbox = window.MaximumOutbox;
-    const queued = outbox ? outbox.enqueue({ ...report, submittedAt: new Date().toISOString() }) : null;
+    const queued = outbox ? outbox.enqueue({ ...report, submittedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }) : null;
     if (!queued) {
       // Penyimpanan lokal tidak tersedia -> pakai jalur lama (menunggu server).
       return confirmSubmitBlocking(report);
@@ -814,6 +817,7 @@
     rememberNewItems(report.items);
     // Timestamp dicatat saat benar-benar dikirim (bukan saat pratinjau dibuka).
     report.submittedAt = new Date().toISOString();
+    report.updatedAt = report.submittedAt;
     previewError.textContent = "";
     previewSubmitBtn.disabled = true;
     previewEditBtn.disabled = true;

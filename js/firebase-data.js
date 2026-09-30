@@ -97,7 +97,7 @@
       return {
         eventId: ev.eventId, event: ev.event, client: ev.client, city: ev.city,
         country: ev.country, eventDate: ev.eventDate, eventDays: ev.eventDays,
-        eventPrice: ev.eventPrice, submittedAt: ev.submittedAt,
+        eventPrice: ev.eventPrice, submittedAt: ev.submittedAt, updatedAt: ev.updatedAt,
         itemCount: (ev.items || []).length
       };
     });

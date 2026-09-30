@@ -565,6 +565,7 @@ async function loadEventsList(onRetry) {
     eventDays: ev.eventDays,
     eventPrice: ev.eventPrice,
     submittedAt: ev.submittedAt,
+    updatedAt: ev.updatedAt,
     itemCount: (ev.items || []).length,
   }));
 }
@@ -960,10 +961,19 @@ function presetRange(key) {
   return { from: _toISODate(start), to: _toISODate(now) };
 }
 
+// Waktu terakhir sebuah event disimpan: saat pertama disubmit ATAU saat
+// terakhir diedit (updatedAt), mana yang lebih baru. Event lama yang belum
+// punya updatedAt otomatis memakai submittedAt.
+function getEventUpdatedAt(ev) {
+  const sub = new Date(ev && ev.submittedAt).getTime();
+  const upd = new Date(ev && ev.updatedAt).getTime();
+  return Math.max(isNaN(sub) ? 0 : sub, isNaN(upd) ? 0 : upd);
+}
+
 function getLastUpdated(events) {
   if (events.length === 0) return null;
   return events.reduce((latest, ev) => {
-    const t = new Date(ev.submittedAt).getTime();
+    const t = getEventUpdatedAt(ev);
     return t > latest ? t : latest;
   }, 0);
 }

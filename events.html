@@ -33,6 +33,15 @@
 
     <div class="events-toolbar">
       <input type="search" id="events-search" placeholder="Cari nama event, client, atau kota…" aria-label="Cari event" />
+      <label class="events-sort">
+        <span class="events-sort-label">Urutkan</span>
+        <select id="events-sort" aria-label="Urutkan daftar event">
+          <option value="updated-desc">Terakhir diperbarui (terbaru)</option>
+          <option value="updated-asc">Terakhir diperbarui (terlama)</option>
+          <option value="name-asc">Nama event A–Z</option>
+          <option value="name-desc">Nama event Z–A</option>
+        </select>
+      </label>
       <div class="events-count" id="events-count"></div>
     </div>
 
@@ -52,11 +61,12 @@
           <span class="dot">·</span>
           <span data-event-location></span>
           <span class="dot">·</span>
-          <span data-event-price></span>
+          <span class="event-row-price" data-event-price></span>
         </div>
         <div class="event-row-sub">
           <span>Tanggal event: <strong data-event-date></strong></span>
           <span>Disubmit: <strong data-event-submitted></strong></span>
+          <span data-event-updated-wrap hidden>Diperbarui: <strong data-event-updated></strong></span>
           <span data-event-items></span>
         </div>
       </div>
