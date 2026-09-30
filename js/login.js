@@ -1,35 +1,23 @@
 /* =========================================================================
    login.js — logika halaman login.html untuk MAXIMUM THE ULTIMATE.
-   Memanggil AUTH_CONFIG.LOGIN_API_URL (Login.gs, backend terpisah dari
-   Code.gs/CONFIG.API_URL) untuk memverifikasi username & password terhadap
-   spreadsheet baru (sheet USERS: kolom username, password).
+   Versi Firebase Authentication (REST, tanpa SDK dan tanpa build).
+   Username diubah jadi email internal: "budi" -> "budi@maximum.app".
+   Buat akun di Firebase Console dengan email persis seperti itu.
    ========================================================================= */
 
 (function () {
-  /* ---------------------------------------------------------------------
-     AKUN LOKAL (login instan, tanpa menunggu server Apps Script).
-     Tambahkan akun di daftar LOCAL_USERS di bawah, satu baris per akun:
-       { username: "nama", password: "katasandi" },
-     Kalau username & password cocok dengan salah satu baris, login langsung
-     berhasil saat itu juga. Kalau tidak cocok dan FALLBACK_TO_SERVER = true,
-     login tetap dicek ke server seperti sebelumnya (akun di sheet USERS
-     tetap berfungsi). Set FALLBACK_TO_SERVER = false kalau hanya ingin
-     akun di daftar ini yang boleh masuk.
-     CATATAN: isi file ini bisa dibaca siapa pun yang membuka situs
-     (View Source). Pakai password khusus untuk situs ini saja.
-     --------------------------------------------------------------------- */
-  const LOCAL_USERS = [
-    // { username: "maximum", password: "jayajayajaya" },
-  ];
-  const FALLBACK_TO_SERVER = true;
+  var FIREBASE_API_KEY = "AIzaSyAEhQvjI0YISOVElhh7yESMaI8520KI000"; // web key, aman publik
+  var EMAIL_DOMAIN = "maximum.app"; // harus sama dengan domain email di Firebase Console
+  var SIGNIN_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" +
+    encodeURIComponent(FIREBASE_API_KEY);
 
-  const form = document.getElementById("login-form");
-  const errorEl = document.getElementById("login-error");
-  const submitBtn = document.getElementById("login-submit");
-  const usernameInput = document.getElementById("login-username");
-  const passwordInput = document.getElementById("login-password");
+  var form = document.getElementById("login-form");
+  var errorEl = document.getElementById("login-error");
+  var submitBtn = document.getElementById("login-submit");
+  var usernameInput = document.getElementById("login-username");
+  var passwordInput = document.getElementById("login-password");
 
-  // Sudah login sebelumnya di tab ini? Langsung lempar ke halaman utama.
+  // Sudah login sebelumnya di tab ini? Langsung ke halaman utama.
   try {
     if (sessionStorage.getItem(AUTH_CONFIG.SESSION_KEY)) {
       window.location.replace("index.html");
@@ -46,36 +34,30 @@
     submitBtn.textContent = isLoading ? "Memeriksa…" : "Masuk";
   }
 
+  function toEmail(username) {
+    var u = username.toLowerCase();
+    return u.indexOf("@") === -1 ? u + "@" + EMAIL_DOMAIN : u;
+  }
+
+  function messageFor(code) {
+    if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_EMAIL/.test(code)) {
+      return "Username atau password salah.";
+    }
+    if (/TOO_MANY_ATTEMPTS/.test(code)) return "Terlalu banyak percobaan. Coba lagi beberapa menit lagi.";
+    if (/USER_DISABLED/.test(code)) return "Akun ini dinonaktifkan.";
+    if (/OPERATION_NOT_ALLOWED/.test(code)) return "Login Email/Password belum diaktifkan di Firebase.";
+    return "Login gagal (" + code + ").";
+  }
+
   form.addEventListener("submit", async function (evt) {
     evt.preventDefault();
     setError("");
 
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value;
+    var username = usernameInput.value.trim();
+    var password = passwordInput.value;
 
     if (!username || !password) {
       setError("Username dan password wajib diisi.");
-      return;
-    }
-
-    // Cek akun lokal dulu: instan, tanpa request jaringan.
-    const localUser = LOCAL_USERS.find(function (u) {
-      return String(u.username || "").trim() === username && String(u.password || "") === password;
-    });
-    if (localUser) {
-      try {
-        sessionStorage.setItem(AUTH_CONFIG.SESSION_KEY, String(localUser.username).trim());
-      } catch (_) {}
-      window.location.href = "index.html";
-      return;
-    }
-    if (!FALLBACK_TO_SERVER) {
-      setError("Username atau password salah.");
-      return;
-    }
-
-    if (!AUTH_CONFIG.LOGIN_API_URL) {
-      setError("Backend login belum dikonfigurasi (isi AUTH_CONFIG.LOGIN_API_URL di js/auth-config.js).");
       return;
     }
 
@@ -83,41 +65,35 @@
     MaximumLoader.show("Memeriksa Akun");
 
     try {
-      // GET dengan query string dipakai (bukan POST body) karena Apps Script
-      // Web App sering me-redirect (302) request POST, dan pada redirect itu
-      // body-nya dibuang oleh browser — query string tetap utuh.
-      const url = AUTH_CONFIG.LOGIN_API_URL
-        + "?action=login"
-        + "&username=" + encodeURIComponent(username)
-        + "&password=" + encodeURIComponent(password);
-      const res = await fetch(url);
+      var res = await fetch(SIGNIN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: toEmail(username),
+          password: password,
+          returnSecureToken: true
+        })
+      });
+      var data = await res.json();
 
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const data = await res.json();
-
-      if (data && data.ok) {
+      if (res.ok && data && data.idToken) {
         try {
-          sessionStorage.setItem(AUTH_CONFIG.SESSION_KEY, data.username || username);
+          sessionStorage.setItem(AUTH_CONFIG.SESSION_KEY, username);
+          sessionStorage.setItem("maximum_auth_token", data.idToken);
         } catch (_) {}
-        // REVISI: delay splash sebelumnya 3000ms lalu 400ms (fix, tidak
-        // tergantung kecepatan server) — salah satu penyebab login "terasa
-        // lama" di atas waktu respons Apps Script itu sendiri. Sekarang
-        // hanya menunggu 2 frame (dua requestAnimationFrame) supaya label
-        // "Harap Tunggu" sempat ter-render di layar sebelum pindah halaman,
-        // alih-alih menunggu angka milidetik tetap yang lebih lama dari
-        // yang sebenarnya dibutuhkan browser untuk menggambar 1 frame.
         MaximumLoader.setLabel("Harap Tunggu");
-        const goToIndex = function () { window.location.href = "index.html"; };
+        var goToIndex = function () { window.location.href = "index.html"; };
         if (typeof requestAnimationFrame === "function") {
           requestAnimationFrame(function () { requestAnimationFrame(goToIndex); });
         } else {
           setTimeout(goToIndex, 50);
         }
-        return; // jangan matikan loader / tombol, biar transisinya mulus
+        return; // biarkan loader tetap tampil sampai pindah halaman
       }
 
+      var code = (data && data.error && data.error.message) || ("HTTP " + res.status);
       MaximumLoader.hide();
-      setError((data && data.error) || "Username atau password salah.");
+      setError(messageFor(code));
       setLoading(false);
     } catch (err) {
       console.error(err);
