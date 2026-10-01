@@ -728,7 +728,7 @@
       const tfoot = previewEl("tfoot");
       const footRow = previewEl("tr");
       const footLabel = previewEl("td", "foot-label", `Total (${report.items.length} barang)`);
-      footLabel.colSpan = 6;
+      footLabel.colSpan = 5;
       footLabel.dataset.label = "";
       footRow.appendChild(footLabel);
       footRow.appendChild(cell(formatRupiah(sumTotal), "Harga total", "col-price num"));
