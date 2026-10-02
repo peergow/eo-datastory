@@ -61,13 +61,35 @@
       id: Date.now() + "-" + Math.random().toString(36).slice(2, 8),
       report: report,
       addedAt: Date.now(),
-      sendingAt: 0
+      sendingAt: 0,
+      attempts: 0   // entri tanpa field ini = entri lama (sebelum revisi) -> dianggap mungkin sudah terkirim
     };
     list.push(entry);
     return write(list) ? entry : null;
   }
 
   function pending() { return read(); }
+
+  // Cek ke server: apakah laporan BARU ini (dikenali dari submittedAt-nya)
+  // sudah tersimpan? Dipakai sebelum mengirim ulang laporan yang pernah dicoba
+  // kirim: server bisa saja sudah menyimpannya walau browser tidak sempat
+  // menerima balasan (halaman keburu pindah / koneksi putus). Tanpa cek ini,
+  // pengiriman ulang bisa membuat event yang sudah dihapus muncul lagi.
+  // Hasil: true = sudah ada, false = belum ada, null = tidak bisa dicek.
+  async function alreadySaved(report) {
+    try {
+      if (typeof CONFIG === "undefined" || !CONFIG.API_URL) return null;
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { ctrl.abort(); }, 10000);
+      var res = await fetch(CONFIG.API_URL + "?action=getEventsList&_=" + Date.now(), { signal: ctrl.signal });
+      clearTimeout(timer);
+      var payload = await res.json();
+      if (!payload || payload.ok === false || !Array.isArray(payload.events)) return null;
+      return payload.events.some(function (ev) {
+        return String(ev.submittedAt || "") === String(report.submittedAt || "");
+      });
+    } catch (_) { return null; }
+  }
 
   function isNetworkOrServerError(err) {
     if (!err) return true;
@@ -119,6 +141,13 @@
       var due = read().filter(function (e) { return !e.sendingAt || now - e.sendingAt > LOCK_MS; });
       for (var i = 0; i < due.length; i++) {
         var entry = due[i];
+        var maybeSentBefore = !(entry.report && entry.report.isEdit) &&
+          (typeof entry.attempts !== "number" || entry.attempts >= 1);
+        if (maybeSentBefore) {
+          var saved = await alreadySaved(entry.report);
+          if (saved === true) { remove(entry.id); continue; }   // sudah ada di server: jangan kirim lagi
+          if (saved === null) { failed++; continue; }           // tak bisa memastikan: tunda, jangan menebak
+        }
         patch(entry.id, function (x) { x.sendingAt = Date.now(); x.attempts = (x.attempts || 0) + 1; });
         try {
           await submitEvent(entry.report);
