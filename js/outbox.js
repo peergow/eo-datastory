@@ -18,6 +18,8 @@
   var KEY = "mx_outbox_v1";
   var LOCK_MS = 60000;      // entri yang sedang dikirim tab lain tidak dikirim ulang selama ini
   var MAX_AUTO_RETRY = 5;   // percobaan ulang otomatis per sesi halaman
+  var MAX_ENTRY_ATTEMPTS = 5;          // total percobaan kirim per entri (lintas halaman/sesi)
+  var MAX_ENTRY_AGE_MS = 24 * 3600 * 1000; // entri lebih tua dari ini dibuang, tidak dikirim lagi
   var flushing = false;
   var retryCount = 0;
   var retryTimer = null;
@@ -107,10 +109,17 @@
     var sentEdits = 0, sentCreates = 0, failed = 0, rejectedMsg = null;
     try {
       var now = Date.now();
+      // Buang entri "zombie": terlalu tua atau sudah terlalu sering gagal.
+      // Tanpa ini, laporan lama yang sebenarnya sudah tersimpan di server
+      // bisa terkirim ulang terus-menerus dan membuat event yang sudah
+      // dihapus muncul lagi di sheet.
+      write(read().filter(function (e) {
+        return (now - (e.addedAt || 0) <= MAX_ENTRY_AGE_MS) && ((e.attempts || 0) < MAX_ENTRY_ATTEMPTS);
+      }));
       var due = read().filter(function (e) { return !e.sendingAt || now - e.sendingAt > LOCK_MS; });
       for (var i = 0; i < due.length; i++) {
         var entry = due[i];
-        patch(entry.id, function (x) { x.sendingAt = Date.now(); });
+        patch(entry.id, function (x) { x.sendingAt = Date.now(); x.attempts = (x.attempts || 0) + 1; });
         try {
           await submitEvent(entry.report);
           remove(entry.id);
